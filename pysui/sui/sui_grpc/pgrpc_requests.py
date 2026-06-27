@@ -442,6 +442,16 @@ class GetMultipleObjectsSummarySC(GetMultipleObjects):
                         initialSharedVersion=str(obj.owner.version or 0),
                     )
                 )
+            elif owner_kind == "CONSENSUS_ADDRESS":
+                entries.append(
+                    ObjectSummary(
+                        objectId=oid_str,
+                        version=str(version),
+                        digest=digest_str,
+                        owner=None,
+                        initialSharedVersion=str(obj.owner.version or 0),
+                    )
+                )
             elif owner_kind in ("ADDRESS", "OBJECT"):
                 entries.append(
                     ObjectSummary(
@@ -484,6 +494,14 @@ class GetObjectSummarySC(GetObject):
             else "OWNER_KIND_UNKNOWN"
         )
         if owner_kind == "SHARED":
+            return ObjectSummary(
+                objectId=oid_str,
+                version=str(version),
+                digest=digest_str,
+                owner=None,
+                initialSharedVersion=str(obj.owner.version or 0),
+            )
+        elif owner_kind == "CONSENSUS_ADDRESS":
             return ObjectSummary(
                 objectId=oid_str,
                 version=str(version),

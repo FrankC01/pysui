@@ -343,6 +343,8 @@ class GetMultipleObjectsSummarySC(PGQL_QueryNode):
                     owner_str = addr_id.get("address") if isinstance(addr_id, dict) else addr_id
                 elif kind == "Shared":
                     shared_v = str(ow.get("initial_version", 0))
+                elif kind == "ConsensusAddressOwner":
+                    shared_v = str(ow.get("start_version", 0))
                 elif kind == "ObjectOwner":
                     parent_id = ow.get("parent_id") or {}
                     owner_str = parent_id.get("address") if isinstance(parent_id, dict) else parent_id
@@ -400,6 +402,8 @@ class GetObjectSummarySC(PGQL_QueryNode):
                 owner_str = addr_data.get("address") if isinstance(addr_data, dict) else addr_data
             elif kind == "Shared":
                 shared_v = str(ow.get("initial_version", 0))
+            elif kind == "ConsensusAddressOwner":
+                shared_v = str(ow.get("start_version", 0))
             elif kind == "ObjectOwner":
                 parent_data = ow.get("parent_id")
                 owner_str = parent_data.get("address") if isinstance(parent_data, dict) else parent_data
@@ -1824,6 +1828,11 @@ def _owner_from_inline_frag(owner_dict: Optional[dict]) -> Optional[sui_prot.Own
         )
     if kind_str == "Immutable":
         return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.IMMUTABLE)
+    if kind_str == "ConsensusAddressOwner":
+        return sui_prot.Owner(
+            kind=sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS,
+            version=owner_dict.get("start_version"),
+        )
     return None
 
 
@@ -3455,6 +3464,11 @@ class GetDynamicFieldsSC(PGQL_QueryNode):
                     parent_id=schema.ObjectOwner.address.select(schema.Address.address),
                     obj_owner_kind=DSLMetaField("__typename"),
                 ),
+                DSLInlineFragment().on(schema.ConsensusAddressOwner).select(
+                    start_version=schema.ConsensusAddressOwner.startVersion,
+                    address_id=schema.ConsensusAddressOwner.address.select(schema.Address.address),
+                    obj_owner_kind=DSLMetaField("__typename"),
+                ),
             )
 
         dfield_connection.select(
@@ -4027,6 +4041,11 @@ def _owner_from_flat(f: dict) -> "sui_prot.Owner | None":
     if kind == "ObjectOwner":
         return sui_prot.Owner(
             kind=sui_prot.OwnerOwnerKind.OBJECT, address=f.get("address")
+        )
+    if kind == "ConsensusAddressOwner":
+        return sui_prot.Owner(
+            kind=sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS,
+            version=f.get("start_version"),
         )
     return None
 

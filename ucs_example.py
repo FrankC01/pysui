@@ -827,6 +827,49 @@ async def do_account_to_sui_coin(client: AsyncClientBase):
         # handle_result(await client.execute(command=cmd.ExecuteTransaction(**txdict)))
 
 
+async def do_party_object(client: AsyncClientBase):
+    """Create a party-owned coin by splitting from gas and party-transferring it.
+
+    Splits 1_000_000 MIST from the gas coin, creates a single-owner Party struct
+    for the payer address via sui::party::single_owner, then transfers the coin
+    using sui::transfer::public_party_transfer — resulting in a ConsensusAddressOwner.
+    """
+    owner = client.config.active_address
+    txer: AsyncSuiTransaction = await client.transaction()
+
+    # Split a small coin from gas to use as the party object
+    party_coin = await txer.split_coin(coin=txer.gas, amounts=[1_000_000])
+
+    # Create a single-owner Party struct for the payer address
+    party = await txer.move_call(
+        target="0x2::party::single_owner",
+        arguments=[owner],
+    )
+
+    # Transfer the coin under ConsensusAddressOwner via public_party_transfer
+    await txer.move_call(
+        target="0x2::transfer::public_party_transfer",
+        arguments=[party_coin, party],
+        type_arguments=["0x2::coin::Coin<0x2::sui::SUI>"],
+    )
+
+    # Simulate (dry run)
+    # handle_result(
+    #     await client.execute(
+    #         command=cmd.SimulateTransactionKind(
+    #             tx_kind=await txer.raw_kind(),
+    #             tx_meta={"sender": owner},
+    #         )
+    #     )
+    # )
+    # Uncomment to execute
+    handle_result(
+        await client.execute(
+            command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+        )
+    )
+
+
 async def main():
     """Run example functions against a live Sui node.
 
@@ -860,7 +903,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        await do_gas(client_init)
+        # await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_all_gas_alt(client_init)
         # await do_gas_ids(client_init)
@@ -906,6 +949,7 @@ async def main():
         # await do_unstake(client_init)
         # await do_sui_coin_to_account(client_init)
         # await do_account_to_sui_coin(client_init)
+        await do_party_object(client_init)
         ## Config
         # await do_chain_id(client_init)
         # await do_protcfg(client_init)

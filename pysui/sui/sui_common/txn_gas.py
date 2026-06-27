@@ -181,7 +181,9 @@ async def async_get_gas_data(
 
     _reserved = budget + gas_source_draw
 
-    use_coins = [x for x in use_coins if x.object_id not in objects_in_use]
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+    _party_excluded = (sui_prot.OwnerOwnerKind.SHARED, sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS)
+    use_coins = [x for x in use_coins if x.object_id not in objects_in_use and (x.owner is None or x.owner.kind not in _party_excluded)]
     if not use_coins:
         raise ValueError("No coin objects found to fund transaction.")
 

@@ -313,8 +313,8 @@ class AsyncObjectCache(AsyncInMemoryCache):
                         objectId=changed.object_id,
                         version=lamport_version,
                         digest=changed.output_digest or "",
-                        owner=None if (owner is None or owner.kind == sui_prot.OwnerOwnerKind.SHARED) else owner.address,
-                        initialSharedVersion=str(owner.version) if owner and owner.kind == sui_prot.OwnerOwnerKind.SHARED else None,
+                        owner=None if (owner is None or owner.kind in (sui_prot.OwnerOwnerKind.SHARED, sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS)) else owner.address,
+                        initialSharedVersion=str(owner.version) if owner and owner.kind in (sui_prot.OwnerOwnerKind.SHARED, sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS) else None,
                     )
                 )
         if added or deleted:

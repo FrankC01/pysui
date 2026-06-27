@@ -227,6 +227,15 @@ class SummaryObject(PGQL_Fragment):
                         ),
                         obj_owner_kind=DSLMetaField("__typename"),
                     ),
+                    DSLInlineFragment()
+                    .on(schema.ConsensusAddressOwner)
+                    .select(
+                        start_version=schema.ConsensusAddressOwner.startVersion,
+                        address_id=schema.ConsensusAddressOwner.address.select(
+                            schema.Address.address
+                        ),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
                 ),
             )
         )
@@ -270,6 +279,15 @@ class StandardObject(PGQL_Fragment):
                     .on(schema.ObjectOwner)
                     .select(
                         parent_id=schema.ObjectOwner.address.select(
+                            schema.Address.address
+                        ),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.ConsensusAddressOwner)
+                    .select(
+                        start_version=schema.ConsensusAddressOwner.startVersion,
+                        address_id=schema.ConsensusAddressOwner.address.select(
                             schema.Address.address
                         ),
                         obj_owner_kind=DSLMetaField("__typename"),
@@ -447,6 +465,15 @@ class ExecutedObject(PGQL_Fragment):
                     .on(schema.ObjectOwner)
                     .select(
                         parent_id=schema.ObjectOwner.address.select(
+                            schema.Address.address
+                        ),
+                        obj_owner_kind=DSLMetaField("__typename"),
+                    ),
+                    DSLInlineFragment()
+                    .on(schema.ConsensusAddressOwner)
+                    .select(
+                        start_version=schema.ConsensusAddressOwner.startVersion,
+                        address_id=schema.ConsensusAddressOwner.address.select(
                             schema.Address.address
                         ),
                         obj_owner_kind=DSLMetaField("__typename"),
