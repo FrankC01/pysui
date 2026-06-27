@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- [enhancement](https://github.com/FrankC01/pysui/issues/393) Adds PartyObject encoding. Examples added to ucs_example.py in repo
+
 ### Fixed
 
 ### Changed

@@ -503,6 +503,33 @@ class GetObjectsOwnedByAddress(SuiCommand):
 
 
 @dataclass(kw_only=True)
+class GetPartyObjects(SuiCommand):
+    """Fetch party objects (ConsensusAddressOwner) owned by an address."""
+
+    gql_class: ClassVar[type] = pgql_query.GetPartyObjectsSC
+    grpc_class: ClassVar[type] = rn.GetPartyObjectsSC
+    is_pageable_gql: ClassVar[bool] = True
+    paginated_field_path_gql: ClassVar[tuple[str, ...]] = ("objects",)
+    is_pageable_grpc: ClassVar[bool] = True
+    paginated_field_path_grpc: ClassVar[tuple[str, ...]] = ("objects",)
+
+    owner: str
+    next_page_token: Optional[bytes] = None
+
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPartyObjects.gql_node")
+    def gql_node(self) -> pgql_query.GetPartyObjectsSC:
+        """Return GQL party-objects query node."""
+        return self.gql_class(owner=self.owner, next_page_token=self.next_page_token)
+
+    @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPartyObjects.grpc_request")
+    def grpc_request(self) -> rn.GetPartyObjectsSC:
+        """Return gRPC list-party-objects request."""
+        return rn.GetPartyObjectsSC(
+            owner=self.owner, page_token=self.next_page_token
+        )
+
+
+@dataclass(kw_only=True)
 class GetDynamicFields(SuiCommand):
     """Fetch dynamic fields of an object."""
 

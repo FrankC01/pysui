@@ -1829,8 +1829,10 @@ def _owner_from_inline_frag(owner_dict: Optional[dict]) -> Optional[sui_prot.Own
     if kind_str == "Immutable":
         return sui_prot.Owner(kind=sui_prot.OwnerOwnerKind.IMMUTABLE)
     if kind_str == "ConsensusAddressOwner":
+        addr_id = owner_dict.get("address_id", {})
         return sui_prot.Owner(
             kind=sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS,
+            address=addr_id.get("address") if isinstance(addr_id, dict) else None,
             version=owner_dict.get("start_version"),
         )
     return None
@@ -2892,6 +2894,63 @@ class GetObjectsOwnedByAddressSC(PGQL_QueryNode):
                 _encode_object_from_raw(o) for o in obj_list if isinstance(o, dict)
             ]
             objects = [o for o in objects if not _is_coin_reservation(o)]
+            end_cursor: Optional[str] = (
+                cursor.get("endCursor") if isinstance(cursor, dict) else None
+            )
+            next_page_token: Optional[bytes] = (
+                end_cursor.encode()
+                if isinstance(cursor, dict) and cursor.get("hasNextPage") and end_cursor
+                else None
+            )
+            return sui_prot.ListOwnedObjectsResponse(
+                objects=objects,
+                next_page_token=next_page_token,
+            )
+
+        return _encode
+
+
+class GetPartyObjectsSC(PGQL_QueryNode):
+    """SC variant: encode_fn maps GQL owned objects response to party-only ListOwnedObjectsResponse proto."""
+
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPartyObjectsSC.__init__")
+    def __init__(self, *, owner: str, next_page_token: bytes | None = None):
+        self.owner = owner
+        self.next_page_token = next_page_token
+
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPartyObjectsSC.as_document_node")
+    def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
+        qres = schema.Query.objects(filter={"owner": self.owner})
+        if self.next_page_token:
+            qres(after=self.next_page_token.decode())
+        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject().fragment(schema)
+        pg_cursor = frag.PageCursor().fragment(schema)
+        qres.select(
+            cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
+            objects_data=schema.ObjectConnection.nodes.select(std_object),
+        )
+        return dsl_gql(pg_cursor, std_object, base_object, DSLQuery(qres))
+
+    @staticmethod
+    @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPartyObjectsSC.encode_fn")
+    def encode_fn() -> Callable[[dict], sui_prot.ListOwnedObjectsResponse]:
+        """Return deserializer producing ListOwnedObjectsResponse containing only party objects."""
+
+        @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPartyObjectsSC._encode")
+        def _encode(in_data: dict) -> sui_prot.ListOwnedObjectsResponse:
+            objects_data = in_data.get("objects") or {}
+            cursor = objects_data.get("cursor") or {}
+            obj_list = objects_data.get("objects_data", [])
+            objects: list[sui_prot.Object] = [
+                _encode_object_from_raw(o) for o in obj_list if isinstance(o, dict)
+            ]
+            objects = [
+                o for o in objects
+                if not _is_coin_reservation(o)
+                and o.owner is not None
+                and o.owner.kind.name == "CONSENSUS_ADDRESS"
+            ]
             end_cursor: Optional[str] = (
                 cursor.get("endCursor") if isinstance(cursor, dict) else None
             )
@@ -4045,6 +4104,7 @@ def _owner_from_flat(f: dict) -> "sui_prot.Owner | None":
     if kind == "ConsensusAddressOwner":
         return sui_prot.Owner(
             kind=sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS,
+            address=f.get("address"),
             version=f.get("start_version"),
         )
     return None

@@ -728,6 +728,24 @@ class GetObjectsOwnedByAddressSC(GetObjectsOwnedByAddress):
         )
 
 
+class GetPartyObjectsSC(GetObjectsOwnedByAddressSC):
+    """SC variant: render filters response to ConsensusAddressOwner (party) objects only."""
+
+    @sync_instrumented(
+        "pysui.sui.sui_grpc.pgrpc_requests.GetPartyObjectsSC.render"
+    )
+    def render(
+        self, resp: sui_prot.ListOwnedObjectsResponse
+    ) -> sui_prot.ListOwnedObjectsResponse:
+        """Strip coin reservations then keep only party (ConsensusAddressOwner) objects."""
+        resp = super().render(resp)
+        resp.objects = [
+            o for o in resp.objects
+            if o.owner and o.owner.kind.name == "CONSENSUS_ADDRESS"
+        ]
+        return resp
+
+
 class GetObjectsForTypeSC(GetObjectsOwnedByAddress):
     """SC variant for GetObjectsForType SuiCommand: returns all object fields."""
 

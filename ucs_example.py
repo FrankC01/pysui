@@ -214,9 +214,15 @@ async def do_objects(client: AsyncClientBase):
             command=cmd.GetObjectsOwnedByAddress(owner=client.config.active_address)
         )
     )
-    if result.is_ok():
-        for obj in result.result_data.objects:
-            print(obj.to_json(indent=2))
+
+
+async def do_party_objects(client: AsyncClientBase):
+    """Fetch all party objects held by owner using execute_for_all()."""
+    result = handle_result(
+        await client.execute_for_all(
+            command=cmd.GetPartyObjects(owner=client.config.active_address)
+        )
+    )
 
 
 async def do_past_object(client: AsyncClientBase):
@@ -854,20 +860,20 @@ async def do_party_object(client: AsyncClientBase):
     )
 
     # Simulate (dry run)
-    # handle_result(
-    #     await client.execute(
-    #         command=cmd.SimulateTransactionKind(
-    #             tx_kind=await txer.raw_kind(),
-    #             tx_meta={"sender": owner},
-    #         )
-    #     )
-    # )
-    # Uncomment to execute
     handle_result(
         await client.execute(
-            command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+            command=cmd.SimulateTransactionKind(
+                tx_kind=await txer.raw_kind(),
+                tx_meta={"sender": owner},
+            )
         )
     )
+    # Uncomment to execute
+    # handle_result(
+    #     await client.execute(
+    #         command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+    #     )
+    # )
 
 
 async def main():
@@ -903,7 +909,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        # await do_gas(client_init)
+        await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_all_gas_alt(client_init)
         # await do_gas_ids(client_init)
@@ -914,6 +920,7 @@ async def main():
         # await do_objects_for_type(client_init)
         # await do_object_content(client_init)
         # await do_objects(client_init)
+        # await do_party_objects(client_init)
         # await do_past_object(client_init)
         # await do_multiple_object_content(client_init)
         # await do_multiple_object_versions(client_init)
@@ -949,7 +956,7 @@ async def main():
         # await do_unstake(client_init)
         # await do_sui_coin_to_account(client_init)
         # await do_account_to_sui_coin(client_init)
-        await do_party_object(client_init)
+        # await do_party_object(client_init)
         ## Config
         # await do_chain_id(client_init)
         # await do_protcfg(client_init)
