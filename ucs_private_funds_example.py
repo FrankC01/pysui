@@ -32,6 +32,7 @@ from pysui.private_transfer._ext import (
     raise_for_crypto,
 )
 from pysui.private_transfer.config import PrivateFundsConfig
+from pysui.sui.sui_common.sui_commands import GetCoins
 
 # ---------------------------------------------------------------------------
 # Fixed example parameters
@@ -243,6 +244,93 @@ async def register_private_funds(*, args: argparse.Namespace, pysui_config: Pysu
         handle_result(await client.execute(command=ExecuteTransaction(**txdict)))
 
 
+async def wrap_private_funds(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
+    """Wrap a whole coin (or a split amount) into a receiver's confidential public balance.
+
+    Fetches the sender's coins of ``token_type``. For ``--coin`` the named whole coin is
+    wrapped; for ``--amount`` a coin of exactly that value is wrapped, splitting in-PTB
+    when no coin matches the amount exactly. The sender must have a sidecar entry for
+    ``token_type`` on this network; the receiver is assumed already registered on-chain.
+    Simulates by default.
+
+    :param args: Parsed CLI arguments for the wrap subcommand.
+    :type args: argparse.Namespace
+    :param pysui_config: The active pysui configuration.
+    :type pysui_config: PysuiConfiguration
+    """
+    sender = args.sender or pysui_config.active_address
+    receiver = args.receiver
+    token_type = args.token_type
+    memo = args.memo if args.memo is not None else b""
+    network = pysui_config.active_profile
+
+    # Gate: the sender must have a sidecar entry for this token_type on this network.
+    sidecar_file = _sidecar_file(path=args.path)
+    sidecar = _load_sidecar(sidecar_file=sidecar_file)
+    if not sidecar.get(network, {}).get(sender, {}).get(token_type, {}):
+        raise SystemExit(
+            f"Sender {sender} has no sidecar entry for {token_type} on {network}; "
+            "run register_accounts / register_private_funds first."
+        )
+
+    client = client_factory(pysui_config)
+
+    # Fetch the sender's coins of this type (needed for both --coin and --amount).
+    coins_result = await client.execute_for_all(
+        command=GetCoins(
+            owner=sender,
+            coin_type=f"0x2::coin::Coin<{token_type}>",
+        )
+    )
+    if not coins_result.is_ok():
+        handle_result(coins_result)
+        raise SystemExit(f"Failed to fetch {token_type} coins for sender {sender}.")
+    coins = coins_result.result_data.objects
+
+    txn = await client.transaction(private_fund=True)
+
+    if args.coin is not None:
+        coin_to_wrap = next((c for c in coins if c.object_id == args.coin), None)
+        if coin_to_wrap is None:
+            raise SystemExit(f"Coin {args.coin} is not among sender {sender}'s {token_type} coins.")
+    else:
+        amount = args.amount
+        total = sum(c.balance for c in coins)
+        if total < amount:
+            raise SystemExit(f"Insufficient balance for {amount}: sender {sender} holds {total}.")
+        exact = next((c for c in coins if c.balance == amount), None)
+        if exact is not None:
+            coin_to_wrap = exact
+        else:
+            fundable = next((c for c in coins if c.balance > amount), None)
+            if fundable is None:
+                raise SystemExit(
+                    f"No single coin has at least {amount} to split from " f"(total {total}); merge coins first."
+                )
+            coin_to_wrap = await txn.split_coin(coin=fundable, amounts=[amount])
+
+    await txn.wrap_private_funds(
+        coin_type=token_type,
+        receiver_address=receiver,
+        coin_to_wrap=coin_to_wrap,
+        memo=memo,
+    )
+
+    if args.mode == "simulate":
+        handle_result(
+            await client.execute(
+                command=SimulateTransactionKind(
+                    tx_kind=await txn.raw_kind(),
+                    tx_meta={"sender": sender},
+                    gas_selection=True,
+                )
+            )
+        )
+    else:
+        txdict = await txn.build_and_sign()
+        handle_result(await client.execute(command=ExecuteTransaction(**txdict)))
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser and register all subcommands.
 
@@ -300,6 +388,53 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional directory containing the sidecar (default: ~/.pysui).",
     )
+    wrap_pf = subparsers.add_parser(
+        "wrap_private_funds",
+        help="Wrap a coin (or split amount) into a receiver's confidential public balance (simulate or execute).",
+    )
+    wrap_pf.add_argument(
+        "--sender",
+        default=None,
+        help="Sender / coin-owner Sui address (default: active PysuiConfiguration address).",
+    )
+    wrap_pf.add_argument(
+        "--receiver",
+        required=True,
+        help="Recipient Sui address (assumed already registered for token_type).",
+    )
+    wrap_pf.add_argument(
+        "--token-type",
+        required=True,
+        help="The confidential coin type (T) to wrap.",
+    )
+    coin_source = wrap_pf.add_mutually_exclusive_group(required=True)
+    coin_source.add_argument(
+        "--coin",
+        default=None,
+        help="Object id of a whole Coin<T> to wrap (whole coin consumed).",
+    )
+    coin_source.add_argument(
+        "--amount",
+        type=int,
+        default=None,
+        help="Amount to wrap; a coin with >= amount is used whole (if exact) or split.",
+    )
+    wrap_pf.add_argument(
+        "--memo",
+        default=None,
+        help="Optional memo string emitted in the on-chain wrap event.",
+    )
+    wrap_pf.add_argument(
+        "--mode",
+        choices=["simulate", "execute"],
+        default="simulate",
+        help="Simulate (default) or execute the wrap transaction.",
+    )
+    wrap_pf.add_argument(
+        "--path",
+        default=None,
+        help="Optional directory containing the sidecar (default: ~/.pysui).",
+    )
     return parser
 
 
@@ -316,34 +451,58 @@ async def main(*, pysui_config: PysuiConfiguration) -> None:
         register_accounts(args=args, pysui_config=pysui_config)
     elif args.command == "register_private_funds":
         await register_private_funds(args=args, pysui_config=pysui_config)
+    elif args.command == "wrap_private_funds":
+        await wrap_private_funds(args=args, pysui_config=pysui_config)
     # Future async commands dispatch with await, e.g.:
     # elif args.command == "transfer":
     #     await transfer(args=args, pysui_config=pysui_config)
 
 
 if __name__ == "__main__":
-    # Optionally force a specific command + arguments (uncomment one):
-    # sys.argv = ["ucs_private_funds_example.py", "validate_config"]
-    # sys.argv = [
-    #     "ucs_private_funds_example.py",
-    #     "validate_config",
-    #     "--path",
-    #     "~/.pwallet",
-    # ]
-    # sys.argv = [
-    #     "ucs_private_funds_example.py",
-    #     "register_accounts",
-    #     "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
-    #     "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28",
-    # ]
-    sys.argv = [
-        "ucs_private_funds_example.py",
-        "register_private_funds",
-        "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
-        "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
-        # "--mode",
-        # "execute",
-    ]
+    if len(sys.argv) == 1:
+
+        # Optionally force a specific command + arguments (uncomment one):
+        # sys.argv = ["ucs_private_funds_example.py", "validate_config"]
+        # sys.argv = [
+        #     "ucs_private_funds_example.py",
+        #     "validate_config",
+        #     "--path",
+        #     "~/.pwallet",
+        # ]
+        # sys.argv = [
+        #     "ucs_private_funds_example.py",
+        #     "register_accounts",
+        #     "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
+        #     "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28",
+        # ]
+        # sys.argv = [
+        #     "ucs_private_funds_example.py",
+        #     "register_private_funds",
+        #     "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
+        #     "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
+        #     # "--mode",
+        #     # "execute",
+        # ]
+        # Default run when invoked with no CLI args (e.g. from the debugger);
+        # real command-line arguments take precedence when provided.
+        sys.argv = [
+            "ucs_private_funds_example.py",
+            "wrap_private_funds",
+            "--receiver",
+            "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
+            "--token-type",
+            "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
+            "--amount",
+            "1000000",
+            # "--sender",
+            # "0x...",
+            # "--coin",
+            # "0x...",
+            # "--memo",
+            # "hello",
+            # "--mode",
+            # "execute",
+        ]
     # sys.argv = [
     #     "ucs_private_funds_example.py",
     #     "register_accounts",
