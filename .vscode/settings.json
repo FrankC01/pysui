@@ -10,7 +10,7 @@
   "pylint.args": [
     "----extension-pkg-whitelist=1xml",
     "--max-line-length",
-    "80",
+    "120",
     "--disable",
     "wrong-import-position",
     "--disable",
@@ -31,17 +31,16 @@
     "MD049":false,
     "MD007":false
   },
-  "autoDocstring.docstringFormat": "sphinx",
+ "autoDocstring.docstringFormat": "sphinx",
   "autoDocstring.generateDocstringOnEnter": true,
   "autoDocstring.guessTypes": true,
   "autoDocstring.includeName": true,
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
-    "editor.formatOnSave": true,
-    "black-formatter.args": [
-      "--check",
-      "--line-length",
-      "79"
-    ],
+    "editor.formatOnSave": true
   },
+  "black-formatter.args": [
+    "--line-length",
+    "120"
+  ],  
 }

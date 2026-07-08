@@ -259,9 +259,13 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
 
     @instrumented("gql.transaction")
     @versionadded(version="0.87.0", reason="Parity with JSON RPC and gRPC client.")
-    async def transaction(self, **kwargs) -> Any:
+    async def transaction(self, *, private_fund: bool = False, **kwargs) -> Any:
         """Return an asynchronous SuiTransaction.
 
+        :param private_fund: When True, run the pysui-crypto capability gate and
+            return a ``PrivateFundsTransaction`` (Confidential Transfers) instead
+            of an ``AsyncSuiTransaction``; defaults to False.
+        :type private_fund: bool, optional
         :param initial_sender: The address of the sender of the transaction, defaults to None
         :type initial_sender: Union[str, SigningMultiSig], optional
         :param compress_inputs: Reuse identical inputs, defaults to False
@@ -270,6 +274,12 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
         kwargs["client"] = self
+        if private_fund:
+            from pysui.private_transfer._ext import raise_for_crypto
+            from pysui.private_transfer.transaction import PrivateFundsTransaction
+
+            raise_for_crypto()
+            return PrivateFundsTransaction(**kwargs)
         return AsyncSuiTransaction(**kwargs)
 
     @instrumented("gql.serial_executor")

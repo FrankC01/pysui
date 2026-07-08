@@ -148,12 +148,12 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         await self.close()
 
     @instrumented("grpc.transaction")
-    async def transaction(
-        self,
-        **kwargs,
-    ) -> Any:
+    async def transaction(self, *, private_fund: bool = False, **kwargs) -> Any:
         """Return a unified AsyncSuiTransaction for the gRPC protocol.
 
+        :param private_fund: Confidential Transfers are GraphQL-only during beta;
+            passing True raises ``RuntimeError``. Defaults to False.
+        :type private_fund: bool, optional
         :param compress_inputs: Reuse identical inputs, defaults to True
         :type compress_inputs: Optional[bool], optional
         :param initial_sender: Initial sender of transactions, defaults to None
@@ -167,6 +167,8 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         """
         from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
+        if private_fund:
+            raise RuntimeError("PrivateFunds is GraphQL-only during beta")
         kwargs["client"] = self
         return AsyncSuiTransaction(**kwargs)
 

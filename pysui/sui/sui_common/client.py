@@ -43,8 +43,13 @@ class PysuiClient(ABC):
         pass
 
     @abstractmethod
-    def transaction(self, **kwargs) -> Any:
-        """Return a transaction builder for this client's protocol."""
+    def transaction(self, *, private_fund: bool = False, **kwargs) -> Any:
+        """Return a transaction builder for this client's protocol.
+
+        :param private_fund: When True, return a ``PrivateFundsTransaction`` for
+            Confidential Transfers (GraphQL protocol only); defaults to False.
+        :type private_fund: bool, optional
+        """
         pass
 
     def close(self) -> None:
