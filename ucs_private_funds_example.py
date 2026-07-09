@@ -277,33 +277,36 @@ async def register_private_funds(*, args: argparse.Namespace, pysui_config: Pysu
     elgamal_public_key = base64.b64decode(pf_public)
 
     client = client_factory(pysui_config)
-    txn = await client.transaction(private_fund=True)
-    await txn.register_private_funds(coin_type=coin_type, owner=address, elgamal_public_key=elgamal_public_key)
+    try:
+        txn = await client.transaction(private_fund=True)
+        await txn.register_private_funds(coin_type=coin_type, owner=address, elgamal_public_key=elgamal_public_key)
 
-    if args.mode == "simulate":
-        handle_result(
-            await client.execute(
-                command=SimulateTransactionKind(
-                    tx_kind=await txn.raw_kind(),
-                    tx_meta={"sender": address},
-                    gas_selection=True,
+        if args.mode == "simulate":
+            handle_result(
+                await client.execute(
+                    command=SimulateTransactionKind(
+                        tx_kind=await txn.raw_kind(),
+                        tx_meta={"sender": address},
+                        gas_selection=True,
+                    )
                 )
             )
-        )
-    else:
-        txdict = await txn.build_and_sign()
-        result = await client.execute(command=ExecuteTransaction(**txdict))
-        handle_result(result)
-        if result.is_ok() and result.result_data.effects.status.success:
-            await _append_history(
-                sidecar=sidecar,
-                sidecar_file=sidecar_file,
-                network=network,
-                address=address,
-                coin_type=coin_type,
-                digest=result.result_data.digest,
-                client=client,
-            )
+        else:
+            txdict = await txn.build_and_sign()
+            result = await client.execute(command=ExecuteTransaction(**txdict))
+            handle_result(result)
+            if result.is_ok() and result.result_data.effects.status.success:
+                await _append_history(
+                    sidecar=sidecar,
+                    sidecar_file=sidecar_file,
+                    network=network,
+                    address=address,
+                    coin_type=coin_type,
+                    digest=result.result_data.digest,
+                    client=client,
+                )
+    finally:
+        await client.close()
 
 
 async def wrap_private_funds(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
@@ -336,72 +339,74 @@ async def wrap_private_funds(*, args: argparse.Namespace, pysui_config: PysuiCon
         )
 
     client = client_factory(pysui_config)
-
-    # Fetch the sender's coins of this type (needed for both --coin and --amount).
-    coins_result = await client.execute_for_all(
-        command=GetCoins(
-            owner=sender,
-            coin_type=f"0x2::coin::Coin<{token_type}>",
+    try:
+        # Fetch the sender's coins of this type (needed for both --coin and --amount).
+        coins_result = await client.execute_for_all(
+            command=GetCoins(
+                owner=sender,
+                coin_type=f"0x2::coin::Coin<{token_type}>",
+            )
         )
-    )
-    if not coins_result.is_ok():
-        handle_result(coins_result)
-        raise SystemExit(f"Failed to fetch {token_type} coins for sender {sender}.")
-    coins = coins_result.result_data.objects
+        if not coins_result.is_ok():
+            handle_result(coins_result)
+            raise SystemExit(f"Failed to fetch {token_type} coins for sender {sender}.")
+        coins = coins_result.result_data.objects
 
-    txn = await client.transaction(private_fund=True)
+        txn = await client.transaction(private_fund=True)
 
-    if args.coin is not None:
-        coin_to_wrap = next((c for c in coins if c.object_id == args.coin), None)
-        if coin_to_wrap is None:
-            raise SystemExit(f"Coin {args.coin} is not among sender {sender}'s {token_type} coins.")
-    else:
-        amount = args.amount
-        total = sum(c.balance for c in coins)
-        if total < amount:
-            raise SystemExit(f"Insufficient balance for {amount}: sender {sender} holds {total}.")
-        exact = next((c for c in coins if c.balance == amount), None)
-        if exact is not None:
-            coin_to_wrap = exact
+        if args.coin is not None:
+            coin_to_wrap = next((c for c in coins if c.object_id == args.coin), None)
+            if coin_to_wrap is None:
+                raise SystemExit(f"Coin {args.coin} is not among sender {sender}'s {token_type} coins.")
         else:
-            fundable = next((c for c in coins if c.balance > amount), None)
-            if fundable is None:
-                raise SystemExit(
-                    f"No single coin has at least {amount} to split from " f"(total {total}); merge coins first."
-                )
-            coin_to_wrap = await txn.split_coin(coin=fundable, amounts=[amount])
+            amount = args.amount
+            total = sum(c.balance for c in coins)
+            if total < amount:
+                raise SystemExit(f"Insufficient balance for {amount}: sender {sender} holds {total}.")
+            exact = next((c for c in coins if c.balance == amount), None)
+            if exact is not None:
+                coin_to_wrap = exact
+            else:
+                fundable = next((c for c in coins if c.balance > amount), None)
+                if fundable is None:
+                    raise SystemExit(
+                        f"No single coin has at least {amount} to split from " f"(total {total}); merge coins first."
+                    )
+                coin_to_wrap = await txn.split_coin(coin=fundable, amounts=[amount])
 
-    await txn.wrap_private_funds(
-        coin_type=token_type,
-        receiver_address=receiver,
-        coin_to_wrap=coin_to_wrap,
-        memo=memo,
-    )
-
-    if args.mode == "simulate":
-        handle_result(
-            await client.execute(
-                command=SimulateTransactionKind(
-                    tx_kind=await txn.raw_kind(),
-                    tx_meta={"sender": sender},
-                    gas_selection=True,
-                )
-            )
+        await txn.wrap_private_funds(
+            coin_type=token_type,
+            receiver_address=receiver,
+            coin_to_wrap=coin_to_wrap,
+            memo=memo,
         )
-    else:
-        txdict = await txn.build_and_sign()
-        result = await client.execute(command=ExecuteTransaction(**txdict))
-        handle_result(result)
-        if result.is_ok() and result.result_data.effects.status.success:
-            await _append_history(
-                sidecar=sidecar,
-                sidecar_file=sidecar_file,
-                network=network,
-                address=sender,
-                coin_type=token_type,
-                digest=result.result_data.digest,
-                client=client,
+
+        if args.mode == "simulate":
+            handle_result(
+                await client.execute(
+                    command=SimulateTransactionKind(
+                        tx_kind=await txn.raw_kind(),
+                        tx_meta={"sender": sender},
+                        gas_selection=True,
+                    )
+                )
             )
+        else:
+            txdict = await txn.build_and_sign()
+            result = await client.execute(command=ExecuteTransaction(**txdict))
+            handle_result(result)
+            if result.is_ok() and result.result_data.effects.status.success:
+                await _append_history(
+                    sidecar=sidecar,
+                    sidecar_file=sidecar_file,
+                    network=network,
+                    address=sender,
+                    coin_type=token_type,
+                    digest=result.result_data.digest,
+                    client=client,
+                )
+    finally:
+        await client.close()
 
 
 async def merge_private_funds(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
@@ -434,33 +439,173 @@ async def merge_private_funds(*, args: argparse.Namespace, pysui_config: PysuiCo
         raise SystemExit(f"Sender {sender} has no account_id in sidecar for {network}; " "run register_accounts first.")
 
     client = client_factory(pysui_config)
-    txn = await client.transaction(private_fund=True)
-    await txn.merge_private_funds(coin_type=token_type, account=account_id)
+    try:
+        txn = await client.transaction(private_fund=True)
+        await txn.merge_private_funds(coin_type=token_type, account=account_id)
 
-    if args.mode == "simulate":
-        handle_result(
-            await client.execute(
-                command=SimulateTransactionKind(
-                    tx_kind=await txn.raw_kind(),
-                    tx_meta={"sender": sender},
-                    gas_selection=True,
+        if args.mode == "simulate":
+            handle_result(
+                await client.execute(
+                    command=SimulateTransactionKind(
+                        tx_kind=await txn.raw_kind(),
+                        tx_meta={"sender": sender},
+                        gas_selection=True,
+                    )
                 )
             )
+        else:
+            txdict = await txn.build_and_sign()
+            result = await client.execute(command=ExecuteTransaction(**txdict))
+            handle_result(result)
+            if result.is_ok() and result.result_data.effects.status.success:
+                await _append_history(
+                    sidecar=sidecar,
+                    sidecar_file=sidecar_file,
+                    network=network,
+                    address=sender,
+                    coin_type=token_type,
+                    digest=result.result_data.digest,
+                    client=client,
+                )
+    finally:
+        await client.close()
+
+
+async def transfer_private_funds(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
+    """Transfer confidential amounts from the sender's active balance to one or more recipients.
+
+    Debits the sender's confidential ``active`` balance by the batch total and credits each
+    recipient's ``pending`` balance. ``--recipient``, ``--amount`` and ``--memo`` are parallel
+    lists of equal length whose order is the on-chain submission order. The sender's ElGamal
+    keypair is read from the sidecar; each recipient's public key and the sender's current
+    encrypted balance are read on-chain. Recipients must ``merge_private_funds`` before the
+    value is spendable. All parties must already be registered for ``token_type``.
+    Simulates by default.
+
+    :param args: Parsed CLI arguments for the transfer subcommand.
+    :type args: argparse.Namespace
+    :param pysui_config: The active pysui configuration.
+    :type pysui_config: PysuiConfiguration
+    """
+    sender = args.sender or pysui_config.active_address
+    token_type = args.token_type
+    network = pysui_config.active_profile
+
+    if not len(args.recipient) == len(args.amount) == len(args.memo):
+        raise SystemExit(
+            "--recipient, --amount and --memo must be the same length (got "
+            f"{len(args.recipient)}, {len(args.amount)}, {len(args.memo)})."
         )
-    else:
-        txdict = await txn.build_and_sign()
-        result = await client.execute(command=ExecuteTransaction(**txdict))
-        handle_result(result)
-        if result.is_ok() and result.result_data.effects.status.success:
-            await _append_history(
-                sidecar=sidecar,
-                sidecar_file=sidecar_file,
-                network=network,
-                address=sender,
-                coin_type=token_type,
-                digest=result.result_data.digest,
-                client=client,
+    recipients = list(zip(args.recipient, args.amount, args.memo))
+
+    sidecar_file = _sidecar_file(path=args.path)
+    sidecar = _load_sidecar(sidecar_file=sidecar_file)
+    addr_entry = sidecar.get(network, {}).get(sender, {})
+    token_entry = addr_entry.get(token_type, {})
+    if not token_entry:
+        raise SystemExit(
+            f"Sender {sender} has no sidecar entry for {token_type} on {network}; "
+            "run register_accounts / register_private_funds first."
+        )
+    account_id = addr_entry.get("account_id")
+    if not account_id:
+        raise SystemExit(f"Sender {sender} has no account_id in sidecar for {network}; " "run register_accounts first.")
+    current = token_entry.get("current", {})
+    pf_private = current.get("pf_private")
+    pf_public = current.get("pf_public")
+    if not pf_private or not pf_public:
+        raise SystemExit(f"Sender {sender} has no pf_private/pf_public keypair in sidecar for {token_type}.")
+
+    client = client_factory(pysui_config)
+    try:
+        txn = await client.transaction(private_fund=True)
+        await txn.transfer_private_funds(
+            coin_type=token_type,
+            sender_account=account_id,
+            recipients=recipients,
+            sender_private_key=base64.b64decode(pf_private),
+            sender_public_key=base64.b64decode(pf_public),
+        )
+
+        if args.mode == "simulate":
+            handle_result(
+                await client.execute(
+                    command=SimulateTransactionKind(
+                        tx_kind=await txn.raw_kind(),
+                        tx_meta={"sender": sender},
+                        gas_selection=True,
+                    )
+                )
             )
+        else:
+            txdict = await txn.build_and_sign()
+            result = await client.execute(command=ExecuteTransaction(**txdict))
+            handle_result(result)
+            if result.is_ok() and result.result_data.effects.status.success:
+                await _append_history(
+                    sidecar=sidecar,
+                    sidecar_file=sidecar_file,
+                    network=network,
+                    address=sender,
+                    coin_type=token_type,
+                    digest=result.result_data.digest,
+                    client=client,
+                )
+    finally:
+        await client.close()
+
+
+async def account_balances(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
+    """Print an owner's decrypted Confidential Transfer balances for a coin type.
+
+    Reads the owner's ``account_id`` and ElGamal private key from the sidecar, fetches
+    the on-chain ``TokenAccount<T>``, and prints the plaintext ``active``, ``pending``
+    and ``public_balance``. ``active`` is spendable; ``pending`` is value received but
+    not yet merged; ``public_balance`` is the plaintext deposit balance. Read-only.
+
+    :param args: Parsed CLI arguments for the account_balances subcommand.
+    :type args: argparse.Namespace
+    :param pysui_config: The active pysui configuration.
+    :type pysui_config: PysuiConfiguration
+    """
+    owner = args.owner or pysui_config.active_address
+    token_type = args.token_type
+    network = pysui_config.active_profile
+
+    sidecar_file = _sidecar_file(path=args.path)
+    sidecar = _load_sidecar(sidecar_file=sidecar_file)
+    addr_entry = sidecar.get(network, {}).get(owner, {})
+    token_entry = addr_entry.get(token_type, {})
+    if not token_entry:
+        raise SystemExit(
+            f"Owner {owner} has no sidecar entry for {token_type} on {network}; "
+            "run register_accounts / register_private_funds first."
+        )
+    account_id = addr_entry.get("account_id")
+    if not account_id:
+        raise SystemExit(f"Owner {owner} has no account_id in sidecar for {network}; " "run register_accounts first.")
+    pf_private = token_entry.get("current", {}).get("pf_private")
+    if not pf_private:
+        raise SystemExit(f"Owner {owner} has no pf_private key in sidecar for {token_type}.")
+
+    client = client_factory(pysui_config)
+    try:
+        pf_config = PrivateFundsConfig(pysui_config=pysui_config)
+        active, pending, public_balance = await utils.account_balances(
+            client=client,
+            package_id=pf_config.active_group.package_id,
+            account_id=account_id,
+            coin_type=token_type,
+            private_key=base64.b64decode(pf_private),
+        )
+        print(f"Owner:           {owner}")
+        print(f"Account:         {account_id}")
+        print(f"Coin type:       {token_type}")
+        print(f"active:          {active}")
+        print(f"pending:         {pending}")
+        print(f"public_balance:  {public_balance}")
+    finally:
+        await client.close()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -592,6 +737,69 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional directory containing the sidecar (default: ~/.pysui).",
     )
+    transfer_pf = subparsers.add_parser(
+        "transfer_private_funds",
+        help="Transfer a confidential amount to a recipient's pending balance (simulate or execute).",
+    )
+    transfer_pf.add_argument(
+        "--sender",
+        default=None,
+        help="Sender / account-owner Sui address (default: active PysuiConfiguration address).",
+    )
+    transfer_pf.add_argument(
+        "--recipient",
+        nargs="+",
+        required=True,
+        help="Recipient Sui address(es) in submission order; each must already be registered for token_type.",
+    )
+    transfer_pf.add_argument(
+        "--token-type",
+        required=True,
+        help="The confidential coin type (T) to transfer.",
+    )
+    transfer_pf.add_argument(
+        "--amount",
+        type=int,
+        nargs="+",
+        required=True,
+        help="Plaintext amount per recipient; must match --recipient in length and order.",
+    )
+    transfer_pf.add_argument(
+        "--memo",
+        nargs="+",
+        required=True,
+        help="Memo per recipient; must match --recipient in length and order.",
+    )
+    transfer_pf.add_argument(
+        "--mode",
+        choices=["simulate", "execute"],
+        default="simulate",
+        help="Simulate (default) or execute the transfer transaction.",
+    )
+    transfer_pf.add_argument(
+        "--path",
+        default=None,
+        help="Optional directory containing the sidecar (default: ~/.pysui).",
+    )
+    balances_pf = subparsers.add_parser(
+        "account_balances",
+        help="Print an owner's decrypted active, pending and public balances (read-only).",
+    )
+    balances_pf.add_argument(
+        "--owner",
+        default=None,
+        help="Account-owner Sui address (default: active PysuiConfiguration address).",
+    )
+    balances_pf.add_argument(
+        "--token-type",
+        required=True,
+        help="The confidential coin type (T) to report.",
+    )
+    balances_pf.add_argument(
+        "--path",
+        default=None,
+        help="Optional directory containing the sidecar (default: ~/.pysui).",
+    )
     return parser
 
 
@@ -612,6 +820,10 @@ async def main(*, pysui_config: PysuiConfiguration) -> None:
         await wrap_private_funds(args=args, pysui_config=pysui_config)
     elif args.command == "merge_private_funds":
         await merge_private_funds(args=args, pysui_config=pysui_config)
+    elif args.command == "transfer_private_funds":
+        await transfer_private_funds(args=args, pysui_config=pysui_config)
+    elif args.command == "account_balances":
+        await account_balances(args=args, pysui_config=pysui_config)
     # Future async commands dispatch with await, e.g.:
     # elif args.command == "transfer":
     #     await transfer(args=args, pysui_config=pysui_config)
@@ -662,15 +874,42 @@ if __name__ == "__main__":
         #     "--mode",
         #     "execute",
         # ]
+        # sys.argv = [
+        #     "ucs_private_funds_example.py",
+        #     "merge_private_funds",
+        #     "--token-type",
+        #     "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
+        #     # "--sender",
+        #     # "0x...",
+        #     "--mode",
+        #     "execute",
+        # ]
+        # --recipient / --amount / --memo are parallel lists of equal length,
+        # in on-chain submission order.
+        # sys.argv = [
+        #     "ucs_private_funds_example.py",
+        #     "transfer_private_funds",
+        #     "--recipient",
+        #     "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
+        #     "--token-type",
+        #     "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
+        #     "--amount",
+        #     "10000000",
+        #     "--memo",
+        #     "transfer test",
+        #     # "--sender",
+        #     # "0x...",
+        #     "--mode",
+        #     "simulate",
+        #     # "execute",
+        # ]
         sys.argv = [
             "ucs_private_funds_example.py",
-            "merge_private_funds",
+            "account_balances",
             "--token-type",
             "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
-            # "--sender",
+            # "--owner",
             # "0x...",
-            "--mode",
-            "execute",
         ]
         # sys.argv = [
         #     "ucs_private_funds_example.py",

@@ -1,3 +1,8 @@
+#    Copyright Frank V. Castellucci
+#    SPDX-License-Identifier: Apache-2.0
+
+# -*- coding: utf-8 -*-
+
 """Move Datatypes for BCS deserialization."""
 
 from typing import Any
@@ -44,4 +49,57 @@ class KeyEncryption(pbcsbase.BCS_Struct):
         ("ciphertext", [MultiRecipientEncryption, None, True]),
         ("proof", KeyConsistencyProof),
         ("range_proof", [bcse.U8, None, True]),
+    ]
+
+
+class Encryption(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::twisted_elgamal::Encryption"""
+
+    _fields = [("ciphertext", Element_G), ("decryption_handle", Element_G)]
+
+
+class EncryptedAmount(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::encrypted_amount::EncryptedAmount"""
+
+    _fields = [
+        ("l0", Encryption),
+        ("l1", Encryption),
+        ("l2", Encryption),
+        ("l3", Encryption),
+    ]
+
+
+class PublicCoin(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::balance::PublicCoin"""
+
+    _fields = [("value", bcse.U64)]
+
+
+class EncryptedBalance(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::balance::EncryptedBalance"""
+
+    _fields = [("amount", EncryptedAmount), ("upper_bound", bcse.U16)]
+
+
+class VerifiedKeyEncryption(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::auditors::VerifiedKeyEncryption"""
+
+    _fields = [
+        ("ciphertext", [MultiRecipientEncryption, None, True]),
+        ("version", bcse.U32),
+    ]
+
+
+class TokenAccount(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::contra::TokenAccount"""
+
+    _fields = [
+        ("pk", Element_G),
+        ("verified_key_encryption", VerifiedKeyEncryption),
+        ("session_id", [bcse.U8, None, True]),
+        ("is_frozen", bool),
+        ("accepts_deposits", bool),
+        ("active", EncryptedBalance),
+        ("pending", EncryptedBalance),
+        ("public_balance", PublicCoin),
     ]

@@ -44,3 +44,26 @@ def raise_for_crypto() -> None:
     """Raise ``RuntimeError`` if pysui_crypto is unavailable or below the minimum version."""
     if not _CRYPTO_AVAILABLE:
         raise RuntimeError(INSTALL_HINT)
+
+
+_BSGS_TABLE: "BsgsTable | None" = None
+
+
+def get_bsgs_table() -> "BsgsTable":
+    """Return the process-wide baby-step/giant-step decryption table.
+
+    The table is a pure discrete-log lookup over the Ristretto group: it holds
+    2^16 points (~2 MiB) and is invariant across senders, coin types, and
+    transfers. It is therefore built once on first use and reused for the life
+    of the process. Construction is the costly part of confidential-balance
+    decryption, so callers must not build their own.
+
+    :raises RuntimeError: If pysui_crypto is unavailable or below the minimum version.
+    :return: The lazily-initialized, shared ``BsgsTable``.
+    :rtype: BsgsTable
+    """
+    global _BSGS_TABLE
+    raise_for_crypto()
+    if _BSGS_TABLE is None:
+        _BSGS_TABLE = BsgsTable.precompute()
+    return _BSGS_TABLE

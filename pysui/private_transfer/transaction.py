@@ -18,6 +18,8 @@ from typing import Union
 
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from pysui.private_transfer.config import PrivateFundsConfig
+from pysui.private_transfer import _ext
+from pysui.private_transfer import pf_bcs
 from pysui.private_transfer import utils
 from pysui.sui.sui_common.instrumentation import instrumented
 from pysui.sui.sui_bcs import bcs
@@ -60,6 +62,30 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         :rtype: PrivateFundsConfig
         """
         return self._pf_config
+
+    async def _token_account(
+        self, *, coin_type: str, account_id: str
+    ) -> pf_bcs.TokenAccount:
+        """Fetch the owner's ``TokenAccount<T>`` using this transaction's client.
+
+        Thin delegation to :func:`pysui.private_transfer.utils._token_account`, which
+        performs the dynamic-field read and BCS deserialization.
+
+        :param coin_type: The confidential coin type ``T`` (fully-qualified type string).
+        :type coin_type: str
+        :param account_id: The owner's derived ``Account`` object id (``0x`` hex string).
+        :type account_id: str
+        :raises ValueError: If the dynamic field query fails, or no
+            ``TokenAccount<T>`` for ``coin_type`` is hung off ``account_id``.
+        :return: The deserialized ``TokenAccount<T>``.
+        :rtype: pf_bcs.TokenAccount
+        """
+        return await utils._token_account(
+            client=self.client,
+            package_id=self._pf_config.active_group.package_id,
+            account_id=account_id,
+            coin_type=coin_type,
+        )
 
     @instrumented(
         "pysui.private_transfer.transaction.PrivateFundsTransaction.register_private_funds"
@@ -235,3 +261,232 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             arguments=[account, auth],
             type_arguments=[coin_type_str],
         )
+
+    @instrumented(
+        "pysui.private_transfer.transaction.PrivateFundsTransaction.transfer_private_funds"
+    )
+    async def transfer_private_funds(
+        self,
+        *,
+        coin_type: Union[str, bcs.TypeTag],
+        sender_account: str,
+        recipients: list[tuple[Union[str, bcs.Address], int, Union[str, bytes]]],
+        sender_private_key: bytes,
+        sender_public_key: bytes,
+    ) -> None:
+        """Build the Confidential Transfer PTB moving amounts to one or more recipients.
+
+        Calls ``contra::batched_transfer`` with parallel ``receiver_pks`` and
+        ``receiver_amounts`` vectors, then one ``contra::add_to_batch`` per recipient in
+        submission order, then ``contra::finalize``. Each recipient's ``pending`` balance
+        is credited and the sender's ``active`` balance is debited by the batch total;
+        recipients must ``merge_private_funds`` before the value is spendable.
+
+        The order of ``recipients`` is the submission order: it fixes both the
+        ``receiver_amounts`` vector and the ``add_to_batch`` sequence, which the on-chain
+        batch consumes positionally.
+
+        The plaintext ``new_balance`` is computed client-side as
+        ``current_balance - sum(amounts)``: pysui-crypto is a pure prover and performs no
+        overspend check, so the sender's balance is decrypted here and the transfer
+        rejected locally when the total exceeds it.
+
+        Sender and every recipient must already be registered for ``coin_type``.
+
+        :param coin_type: The confidential coin type ``T`` (type string or ``bcs.TypeTag``).
+        :type coin_type: Union[str, bcs.TypeTag]
+        :param sender_account: The sender's derived ``Account`` object id (``0x`` hex string).
+        :type sender_account: str
+        :param recipients: Ordered ``(recipient_address, amount, memo)`` triples. The memo
+            is emitted in that recipient's on-chain transfer event.
+        :type recipients: list[tuple[Union[str, bcs.Address], int, Union[str, bytes]]]
+        :param sender_private_key: The sender's 32-byte ElGamal private key.
+        :type sender_private_key: bytes
+        :param sender_public_key: The sender's 32-byte ElGamal public key.
+        :type sender_public_key: bytes
+        :raises ValueError: If ``recipients`` is empty, or the batch total exceeds the
+            sender's decrypted active balance.
+        """
+        if not recipients:
+            raise ValueError("recipients must contain at least one (address, amount, memo) triple")
+
+        group = self._pf_config.active_group
+        package_id = group.package_id
+        coin_type_str = (
+            coin_type.type_tag_to_str()
+            if isinstance(coin_type, bcs.TypeTag)
+            else coin_type
+        )
+        confidential_token = utils.confidential_token_id(
+            package_id=package_id,
+            token_registry_id=group.token_registry,
+            coin_type=coin_type_str,
+        )
+
+        sender_ta = await self._token_account(
+            coin_type=coin_type_str, account_id=sender_account
+        )
+        old_active_balance = _flatten_encrypted_amount(amount=sender_ta.active.amount)
+
+        recipient_accounts: list[str] = []
+        recipient_pks: list[bytes] = []
+        amounts: list[int] = []
+        memos: list[bytes] = []
+        for recipient_address, amount, memo in recipients:
+            recipient_account = utils.account_id(
+                package_id=package_id,
+                account_registry_id=group.account_registry,
+                owner=recipient_address,
+            )
+            recipient_ta = await self._token_account(
+                coin_type=coin_type_str, account_id=recipient_account
+            )
+            recipient_accounts.append(recipient_account)
+            recipient_pks.append(bytes(recipient_ta.pk.bytes))
+            amounts.append(amount)
+            memos.append(memo.encode("utf-8") if isinstance(memo, str) else memo)
+
+        batch_total = sum(amounts)
+        current_balance = _ext.decrypt_balance(
+            sender_private_key, old_active_balance, _ext.get_bsgs_table()
+        )
+        if batch_total > current_balance:
+            raise ValueError(
+                f"Insufficient confidential balance: have {current_balance}, need {batch_total}"
+            )
+        new_balance = current_balance - batch_total
+
+        session_id = utils.session_id(
+            package_id=package_id,
+            account_id=sender_account,
+            coin_type=coin_type_str,
+        )
+        proofs = _ext.batched_transfer_proofs(
+            sender_private_key,
+            sender_public_key,
+            old_active_balance,
+            list(zip(recipient_pks, amounts)),
+            new_balance,
+            session_id,
+        )
+
+        auth = await self.move_call(
+            target=f"{package_id}::contra::authorize_as_sender",
+            arguments=[confidential_token],
+            type_arguments=[coin_type_str],
+        )
+        receiver_pks = await self.move_call(
+            target=f"{package_id}::decode::g_vector",
+            arguments=[recipient_pks],
+        )
+        encrypted_amounts = [
+            await self.move_call(
+                target=f"{package_id}::decode::encrypted_amount",
+                arguments=[_chunk32(blob=each)],
+            )
+            for each in proofs["encrypted_amounts"]
+        ]
+        receiver_amounts = await self.make_move_vector(
+            items=encrypted_amounts,
+            item_type=f"{package_id}::encrypted_amount::EncryptedAmount",
+        )
+        consistency_proofs = [
+            await self.move_call(
+                target=f"{package_id}::decode::consistency_proof",
+                arguments=[_chunk32(blob=each)],
+            )
+            for each in proofs["consistency_proofs"]
+        ]
+        consistency_proof_vector = await self.make_move_vector(
+            items=consistency_proofs,
+            item_type=f"{package_id}::encrypted_amount::ConsistencyProof",
+        )
+        well_formed_proofs = await self.move_call(
+            target=f"{package_id}::encrypted_amount::new_well_formed_proof",
+            arguments=[proofs["range_proofs"], consistency_proof_vector],
+        )
+        total_sender_handle = await self.move_call(
+            target="0x2::ristretto255::g_from_bytes",
+            arguments=[proofs["total_sender_handle"]],
+        )
+        consistency_proof = await self.move_call(
+            target=f"{package_id}::decode::elgamal_proof",
+            arguments=[_chunk32(blob=proofs["sender_total_consistency_proof"])],
+        )
+        seed_point = await self.move_call(
+            target="0x2::ristretto255::g_from_bytes",
+            arguments=[proofs["seed_point"]],
+        )
+        new_balance_amount = await self.move_call(
+            target=f"{package_id}::decode::encrypted_amount",
+            arguments=[_chunk32(blob=proofs["new_balance_amount"])],
+        )
+        balance_proof = await self.move_call(
+            target=f"{package_id}::decode::ddh_proof",
+            arguments=[_chunk32(blob=proofs["balance_proof"])],
+        )
+        batch = await self.move_call(
+            target=f"{package_id}::contra::batched_transfer",
+            arguments=[
+                sender_account,
+                auth,
+                confidential_token,
+                "0x403",
+                receiver_pks,
+                receiver_amounts,
+                well_formed_proofs,
+                total_sender_handle,
+                consistency_proof,
+                seed_point,
+                new_balance_amount,
+                balance_proof,
+            ],
+            type_arguments=[coin_type_str],
+        )
+        for recipient_account, memo_bytes in zip(recipient_accounts, memos):
+            batch = await self.move_call(
+                target=f"{package_id}::contra::add_to_batch",
+                arguments=[batch, recipient_account, memo_bytes, "0x403"],
+                type_arguments=[coin_type_str],
+            )
+        await self.move_call(
+            target=f"{package_id}::contra::finalize",
+            arguments=[batch],
+            type_arguments=[coin_type_str],
+        )
+
+
+def _chunk32(*, blob: bytes) -> list[bytes]:
+    """Split a byte blob into consecutive 32-byte parts.
+
+    The ``contra::decode`` Move functions accept ``vector<vector<u8>>`` whose parts
+    are the 32-byte group elements and scalars of the composite crypto type.
+
+    :param blob: A byte string whose length is a multiple of 32.
+    :type blob: bytes
+    :raises ValueError: If ``blob`` is not a multiple of 32 bytes.
+    :return: The 32-byte parts, in order.
+    :rtype: list[bytes]
+    """
+    if len(blob) % 32:
+        raise ValueError(f"Expected a multiple of 32 bytes, got {len(blob)}")
+    return [blob[index : index + 32] for index in range(0, len(blob), 32)]
+
+
+def _flatten_encrypted_amount(*, amount: pf_bcs.EncryptedAmount) -> bytes:
+    """Flatten a deserialized ``EncryptedAmount`` to its 256-byte wire form.
+
+    pysui-crypto expects the encrypted balance as four 64-byte limbs, each limb the
+    concatenation ``ciphertext || decryption_handle``. BCS deserialization yields the
+    group elements as length-prefixed vectors, so they are re-concatenated here.
+
+    :param amount: The deserialized ``EncryptedAmount``.
+    :type amount: pf_bcs.EncryptedAmount
+    :return: The flat 256-byte encrypted amount.
+    :rtype: bytes
+    """
+    flattened = bytearray()
+    for limb in (amount.l0, amount.l1, amount.l2, amount.l3):
+        flattened.extend(bytes(limb.ciphertext.bytes))
+        flattened.extend(bytes(limb.decryption_handle.bytes))
+    return bytes(flattened)

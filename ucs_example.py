@@ -48,7 +48,7 @@ async def do_coins_for_type(client: AsyncClientBase):
         await client.execute(
             command=cmd.GetCoins(
                 owner=client.config.active_address,
-                coin_type="0x2::coin::Coin<0x2::sui::SUI>",
+                coin_type="0x2::coin::Coin<0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN>",
             )
         )
     )
@@ -809,7 +809,7 @@ async def main():
         ## QueryNodes (fetch)
         # await do_coin_meta(client_init)
         # await do_coins_for_type(client_init)
-        # await do_gas(client_init)
+        await do_gas(client_init)
         # await do_all_gas(client_init)
         # await do_all_gas_alt(client_init)
         # await do_gas_ids(client_init)
@@ -825,7 +825,7 @@ async def main():
         # await do_multiple_object_content(client_init)
         # await do_multiple_object_versions(client_init)
         # await do_objects_for(client_init)
-        await do_dynamics(client_init)
+        # await do_dynamics(client_init)
         # await do_tx(client_init)
         # await do_txs(client_init)
         # await do_tx_kind(client_init)
