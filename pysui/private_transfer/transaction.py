@@ -455,6 +455,140 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             type_arguments=[coin_type_str],
         )
 
+    @instrumented(
+        "pysui.private_transfer.transaction.PrivateFundsTransaction.unwrap_private_funds"
+    )
+    async def unwrap_private_funds(
+        self,
+        *,
+        coin_type: Union[str, bcs.TypeTag],
+        account: str,
+        amount: int,
+        account_private_key: bytes,
+        account_public_key: bytes,
+    ) -> bcs.Argument:
+        """Build the Confidential Transfer unwrap PTB and return the withdrawn coin.
+
+        Calls ``contra::unwrap`` to take ``amount`` out of ``account``'s confidential
+        ``active`` balance and returns the resulting ordinary ``Coin<T>`` as a PTB result.
+        The coin is not consumed here: the caller composes it, typically with
+        ``transfer_objects``. The ``amount`` is a plaintext ``u64`` and is therefore public
+        on chain; only the residual balance stays encrypted.
+
+        Unwrap draws on the ``active`` balance only. Value credited to ``pending`` by an
+        inbound ``transfer_private_funds``, or to ``public_balance`` by ``wrap_private_funds``,
+        is invisible here until ``merge_private_funds`` folds it into ``active``. Because
+        merge rewrites the ``active`` ciphertext that the balance proof is bound to, the
+        merge must land in a **separate transaction** before this one is built.
+
+        The plaintext new balance is computed client-side as ``active_balance - amount``:
+        pysui-crypto is a pure prover and performs no overspend check, so the balance is
+        decrypted here and the unwrap rejected locally when ``amount`` exceeds it.
+
+        The transaction sender must be ``account``'s owner.
+
+        :param coin_type: The confidential coin type ``T`` (type string or ``bcs.TypeTag``).
+        :type coin_type: Union[str, bcs.TypeTag]
+        :param account: The owner's ``Account`` object id (``0x`` hex string).
+        :type account: str
+        :param amount: The plaintext amount to withdraw from the confidential active balance.
+        :type amount: int
+        :param account_private_key: The account's 32-byte Twisted-ElGamal private key. This is
+            the confidential-transfer keypair, not the owner's Sui signing key.
+        :type account_private_key: bytes
+        :param account_public_key: The account's 32-byte Twisted-ElGamal public key. This is
+            the confidential-transfer keypair, not the owner's Sui signing key.
+        :type account_public_key: bytes
+        :raises ValueError: If ``amount`` exceeds the decrypted confidential active balance.
+        :return: The unwrapped ``Coin<T>`` as a PTB result argument.
+        :rtype: bcs.Argument
+        """
+        group = self._pf_config.active_group
+        package_id = group.package_id
+        coin_type_str = (
+            coin_type.type_tag_to_str()
+            if isinstance(coin_type, bcs.TypeTag)
+            else coin_type
+        )
+        confidential_token = utils.confidential_token_id(
+            package_id=package_id,
+            token_registry_id=group.token_registry,
+            coin_type=coin_type_str,
+        )
+        pool = utils.pool_id(
+            package_id=package_id,
+            confidential_token_id=confidential_token,
+        )
+
+        owner_ta = await self._token_account(
+            coin_type=coin_type_str, account_id=account
+        )
+        old_active_balance = _flatten_encrypted_amount(amount=owner_ta.active.amount)
+
+        active_balance = _ext.decrypt_balance(
+            account_private_key, old_active_balance, _ext.get_bsgs_table()
+        )
+        if amount > active_balance:
+            raise ValueError(
+                f"Insufficient confidential active balance: have {active_balance}, need {amount}"
+            )
+        new_balance = active_balance - amount
+
+        session_id = utils.session_id(
+            package_id=package_id,
+            account_id=account,
+            coin_type=coin_type_str,
+        )
+        proofs = _ext.unwrap_proofs(
+            account_private_key,
+            account_public_key,
+            old_active_balance,
+            amount,
+            new_balance,
+            session_id,
+        )
+
+        auth = await self.move_call(
+            target=f"{package_id}::contra::authorize_as_sender",
+            arguments=[confidential_token],
+            type_arguments=[coin_type_str],
+        )
+        new_balance_amount = await self.move_call(
+            target=f"{package_id}::decode::encrypted_amount",
+            arguments=[_chunk32(blob=proofs["new_balance_amount"])],
+        )
+        consistency_proof = await self.move_call(
+            target=f"{package_id}::decode::consistency_proof",
+            arguments=[_chunk32(blob=proofs["consistency_proofs"][0])],
+        )
+        consistency_proof_vector = await self.make_move_vector(
+            items=[consistency_proof],
+            item_type=f"{package_id}::encrypted_amount::ConsistencyProof",
+        )
+        new_balance_proof = await self.move_call(
+            target=f"{package_id}::encrypted_amount::new_well_formed_proof",
+            arguments=[proofs["range_proofs"], consistency_proof_vector],
+        )
+        balance_proof = await self.move_call(
+            target=f"{package_id}::decode::ddh_proof",
+            arguments=[_chunk32(blob=proofs["balance_proof"])],
+        )
+        return await self.move_call(
+            target=f"{package_id}::contra::unwrap",
+            arguments=[
+                account,
+                auth,
+                confidential_token,
+                "0x403",
+                pool,
+                new_balance_amount,
+                new_balance_proof,
+                amount,
+                balance_proof,
+            ],
+            type_arguments=[coin_type_str],
+        )
+
 
 def _chunk32(*, blob: bytes) -> list[bytes]:
     """Split a byte blob into consecutive 32-byte parts.

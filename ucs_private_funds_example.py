@@ -555,6 +555,87 @@ async def transfer_private_funds(*, args: argparse.Namespace, pysui_config: Pysu
         await client.close()
 
 
+async def unwrap_private_funds(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
+    """Unwrap a confidential amount into an ordinary Coin<T> and transfer it to a recipient.
+
+    Debits the sender's confidential ``active`` balance by ``--amount`` and withdraws that
+    value from the token's ``Pool<T>`` as a plaintext ``Coin<T>``, which is transferred to
+    ``--recipient`` (default: the sender). The amount is public on chain; only the residual
+    confidential balance stays encrypted.
+
+    Unwrap draws on the ``active`` balance only. Run ``merge_private_funds`` first, as its
+    own transaction, if value is still sitting in ``pending`` or ``public_balance`` --
+    ``account_balances`` will show it. The sender's Twisted-ElGamal keypair is read from the
+    sidecar; the current encrypted balance is read on-chain. Simulates by default.
+
+    :param args: Parsed CLI arguments for the unwrap subcommand.
+    :type args: argparse.Namespace
+    :param pysui_config: The active pysui configuration.
+    :type pysui_config: PysuiConfiguration
+    """
+    sender = args.sender or pysui_config.active_address
+    recipient = args.recipient or sender
+    token_type = args.token_type
+    network = pysui_config.active_profile
+
+    sidecar_file = _sidecar_file(path=args.path)
+    sidecar = _load_sidecar(sidecar_file=sidecar_file)
+    addr_entry = sidecar.get(network, {}).get(sender, {})
+    token_entry = addr_entry.get(token_type, {})
+    if not token_entry:
+        raise SystemExit(
+            f"Sender {sender} has no sidecar entry for {token_type} on {network}; "
+            "run register_accounts / register_private_funds first."
+        )
+    account_id = addr_entry.get("account_id")
+    if not account_id:
+        raise SystemExit(f"Sender {sender} has no account_id in sidecar for {network}; " "run register_accounts first.")
+    current = token_entry.get("current", {})
+    pf_private = current.get("pf_private")
+    pf_public = current.get("pf_public")
+    if not pf_private or not pf_public:
+        raise SystemExit(f"Sender {sender} has no pf_private/pf_public keypair in sidecar for {token_type}.")
+
+    client = client_factory(pysui_config)
+    try:
+        txn = await client.transaction(private_fund=True)
+        unwrapped_coin = await txn.unwrap_private_funds(
+            coin_type=token_type,
+            account=account_id,
+            amount=args.amount,
+            account_private_key=base64.b64decode(pf_private),
+            account_public_key=base64.b64decode(pf_public),
+        )
+        await txn.transfer_objects(transfers=[unwrapped_coin], recipient=recipient)
+
+        if args.mode == "simulate":
+            handle_result(
+                await client.execute(
+                    command=SimulateTransactionKind(
+                        tx_kind=await txn.raw_kind(),
+                        tx_meta={"sender": sender},
+                        gas_selection=True,
+                    )
+                )
+            )
+        else:
+            txdict = await txn.build_and_sign()
+            result = await client.execute(command=ExecuteTransaction(**txdict))
+            handle_result(result)
+            if result.is_ok() and result.result_data.effects.status.success:
+                await _append_history(
+                    sidecar=sidecar,
+                    sidecar_file=sidecar_file,
+                    network=network,
+                    address=sender,
+                    coin_type=token_type,
+                    digest=result.result_data.digest,
+                    client=client,
+                )
+    finally:
+        await client.close()
+
+
 async def account_balances(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
     """Print an owner's decrypted Confidential Transfer balances for a coin type.
 
@@ -781,6 +862,42 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional directory containing the sidecar (default: ~/.pysui).",
     )
+    unwrap_pf = subparsers.add_parser(
+        "unwrap_private_funds",
+        help="Unwrap a confidential amount from the sender's active balance into an ordinary Coin<T> (simulate or execute).",
+    )
+    unwrap_pf.add_argument(
+        "--sender",
+        default=None,
+        help="Sender / account-owner Sui address (default: active PysuiConfiguration address).",
+    )
+    unwrap_pf.add_argument(
+        "--recipient",
+        default=None,
+        help="Recipient of the unwrapped Coin<T> (default: --sender).",
+    )
+    unwrap_pf.add_argument(
+        "--token-type",
+        required=True,
+        help="The confidential coin type (T) to unwrap.",
+    )
+    unwrap_pf.add_argument(
+        "--amount",
+        type=int,
+        required=True,
+        help="Plaintext amount to unwrap from the sender's confidential active balance.",
+    )
+    unwrap_pf.add_argument(
+        "--mode",
+        choices=["simulate", "execute"],
+        default="simulate",
+        help="Simulate (default) or execute the unwrap transaction.",
+    )
+    unwrap_pf.add_argument(
+        "--path",
+        default=None,
+        help="Optional directory containing the sidecar (default: ~/.pysui).",
+    )
     balances_pf = subparsers.add_parser(
         "account_balances",
         help="Print an owner's decrypted active, pending and public balances (read-only).",
@@ -822,6 +939,8 @@ async def main(*, pysui_config: PysuiConfiguration) -> None:
         await merge_private_funds(args=args, pysui_config=pysui_config)
     elif args.command == "transfer_private_funds":
         await transfer_private_funds(args=args, pysui_config=pysui_config)
+    elif args.command == "unwrap_private_funds":
+        await unwrap_private_funds(args=args, pysui_config=pysui_config)
     elif args.command == "account_balances":
         await account_balances(args=args, pysui_config=pysui_config)
     # Future async commands dispatch with await, e.g.:
@@ -903,14 +1022,31 @@ if __name__ == "__main__":
         #     "simulate",
         #     # "execute",
         # ]
+        # Unwrap draws on `active` only -- run merge_private_funds first, as its
+        # own transaction, if value is still in `pending` or `public_balance`.
         sys.argv = [
             "ucs_private_funds_example.py",
-            "account_balances",
+            "unwrap_private_funds",
             "--token-type",
             "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
-            # "--owner",
+            "--amount",
+            "10000000",
+            # "--sender",
             # "0x...",
+            # "--recipient",
+            # "0x...",
+            "--mode",
+            # "simulate",
+            "execute",
         ]
+        # sys.argv = [
+        #     "ucs_private_funds_example.py",
+        #     "account_balances",
+        #     "--token-type",
+        #     "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
+        #     # "--owner",
+        #     # "0x...",
+        # ]
         # sys.argv = [
         #     "ucs_private_funds_example.py",
         #     "register_accounts",

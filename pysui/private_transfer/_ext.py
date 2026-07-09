@@ -28,6 +28,7 @@ try:
         encrypt_amount_with_proofs,
         register_with_auditors,
         unwrap_proof,
+        unwrap_proofs,
         batched_transfer_proofs,
         rekey_proofs,
         recover_transfer_randomness,
