@@ -262,7 +262,7 @@ async def do_dynamics(client: AsyncClientBase):
     """
     handle_result(
         await client.execute(
-            command=cmd.GetDynamicFields(object_id="0x73d05d62c18d9374e3ea529e8e0ed6161da1a141a94d3f76ae3fe4e99356db75")
+            command=cmd.GetDynamicFields(object_id="0xc9475f2d0fac3ad3dcc8cb0740a760dcd4bd5ba4475ab434b2d1a7a2918d8a69")
         )
     )
 
@@ -275,7 +275,7 @@ async def do_chain_id(client: AsyncClientBase):
 async def do_tx(client: AsyncClientBase):
     """Fetch specific transaction by its digest."""
     handle_result(
-        await client.execute(command=cmd.GetTransaction(digest="8mP8YpKYPoS84sB4JGg5mrfahq55qwpMxa5KbaBF6nFT"))
+        await client.execute(command=cmd.GetTransaction(digest="9hbKXCZgvzXMTSH5pPQnsiY5tHp2ry9NWvUPRNtovaSC"))
     )
 
 
@@ -825,7 +825,7 @@ async def main():
         # await do_multiple_object_content(client_init)
         # await do_multiple_object_versions(client_init)
         # await do_objects_for(client_init)
-        # await do_dynamics(client_init)
+        await do_dynamics(client_init)
         # await do_tx(client_init)
         # await do_txs(client_init)
         # await do_tx_kind(client_init)
@@ -841,7 +841,7 @@ async def main():
         # await do_refgas(client_init)
         # await do_struct(client_init)
         # await do_structs(client_init)
-        await do_func(client_init)
+        # await do_func(client_init)
         # await do_funcs(client_init)
         # await do_module(client_init)
         # await do_package(client_init)

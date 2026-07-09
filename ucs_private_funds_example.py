@@ -23,8 +23,11 @@ from pysui import (
     PysuiConfiguration,
     SuiRpcResult,
     client_factory,
+    AsyncClientBase,
     SimulateTransactionKind,
     ExecuteTransaction,
+    GetTransaction,
+    GetCoins,
 )
 from pysui.private_transfer import utils
 from pysui.private_transfer._ext import (
@@ -32,7 +35,6 @@ from pysui.private_transfer._ext import (
     raise_for_crypto,
 )
 from pysui.private_transfer.config import PrivateFundsConfig
-from pysui.sui.sui_common.sui_commands import GetCoins
 
 # ---------------------------------------------------------------------------
 # Fixed example parameters
@@ -105,6 +107,55 @@ def _save_sidecar(*, sidecar_file: Path, data: dict) -> None:
     """
     sidecar_file.parent.mkdir(parents=True, exist_ok=True)
     sidecar_file.write_text(json.dumps(data, indent=2))
+
+
+async def _append_history(  # pylint: disable=too-many-arguments
+    *,
+    sidecar: dict,
+    sidecar_file: Path,
+    network: str,
+    address: str,
+    coin_type: str,
+    digest: str,
+    client: AsyncClientBase,
+) -> None:
+    """Append a ``{digest, timestamp, checkpoint}`` anchor to the sidecar history.
+
+    The execute response returns after quorum certification but before checkpoint
+    finality, so ``timestamp`` and ``checkpoint`` are not yet assigned on it. This
+    polls :class:`GetTransaction` by ``digest`` (up to 10 attempts, 1s apart) until
+    the checkpoint is filled, then records the anchor. If it never resolves within
+    the budget it falls through and stores ``null`` timestamp/checkpoint — the
+    digest alone is sufficient to reconstruct the detail from chain later.
+
+    :param sidecar: The in-memory sidecar mapping to mutate.
+    :type sidecar: dict
+    :param sidecar_file: Path to the sidecar JSON file to persist to.
+    :type sidecar_file: Path
+    :param network: Active network profile key (e.g. ``devnet``).
+    :type network: str
+    :param address: Sender address the activity is recorded under.
+    :type address: str
+    :param coin_type: Fully-qualified coin type key.
+    :type coin_type: str
+    :param digest: Transaction digest from the execute result.
+    :type digest: str
+    :param client: Active UCI protocol client for the by-digest lookup.
+    :type client: AsyncClientBase
+    """
+    timestamp: str | None = None
+    checkpoint: int | None = None
+    for _ in range(10):
+        result = await client.execute(command=GetTransaction(digest=digest))
+        if result.is_ok() and result.result_data is not None and result.result_data.checkpoint is not None:
+            executed = result.result_data
+            checkpoint = executed.checkpoint
+            timestamp = executed.timestamp.isoformat() if executed.timestamp else None
+            break
+        await asyncio.sleep(1)
+    history = sidecar[network][address][coin_type].setdefault("history", [])
+    history.append({"digest": digest, "timestamp": timestamp, "checkpoint": checkpoint})
+    _save_sidecar(sidecar_file=sidecar_file, data=sidecar)
 
 
 def register_accounts(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
@@ -241,7 +292,18 @@ async def register_private_funds(*, args: argparse.Namespace, pysui_config: Pysu
         )
     else:
         txdict = await txn.build_and_sign()
-        handle_result(await client.execute(command=ExecuteTransaction(**txdict)))
+        result = await client.execute(command=ExecuteTransaction(**txdict))
+        handle_result(result)
+        if result.is_ok() and result.result_data.effects.status.success:
+            await _append_history(
+                sidecar=sidecar,
+                sidecar_file=sidecar_file,
+                network=network,
+                address=address,
+                coin_type=coin_type,
+                digest=result.result_data.digest,
+                client=client,
+            )
 
 
 async def wrap_private_funds(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
@@ -328,7 +390,77 @@ async def wrap_private_funds(*, args: argparse.Namespace, pysui_config: PysuiCon
         )
     else:
         txdict = await txn.build_and_sign()
-        handle_result(await client.execute(command=ExecuteTransaction(**txdict)))
+        result = await client.execute(command=ExecuteTransaction(**txdict))
+        handle_result(result)
+        if result.is_ok() and result.result_data.effects.status.success:
+            await _append_history(
+                sidecar=sidecar,
+                sidecar_file=sidecar_file,
+                network=network,
+                address=sender,
+                coin_type=token_type,
+                digest=result.result_data.digest,
+                client=client,
+            )
+
+
+async def merge_private_funds(*, args: argparse.Namespace, pysui_config: PysuiConfiguration) -> None:
+    """Merge a sender's pending + public confidential deposits into their active balance.
+
+    Applies all pending (encrypted) and plaintext ``public_balance`` deposits for
+    ``token_type`` into the sender's confidential ``active`` balance, making them
+    spendable in a confidential transfer. Owner-only: the sender must be the account
+    owner. Simulates by default.
+
+    :param args: Parsed CLI arguments for the merge subcommand.
+    :type args: argparse.Namespace
+    :param pysui_config: The active pysui configuration.
+    :type pysui_config: PysuiConfiguration
+    """
+    sender = args.sender or pysui_config.active_address
+    token_type = args.token_type
+    network = pysui_config.active_profile
+
+    sidecar_file = _sidecar_file(path=args.path)
+    sidecar = _load_sidecar(sidecar_file=sidecar_file)
+    addr_entry = sidecar.get(network, {}).get(sender, {})
+    if not addr_entry.get(token_type, {}):
+        raise SystemExit(
+            f"Sender {sender} has no sidecar entry for {token_type} on {network}; "
+            "run register_accounts / register_private_funds first."
+        )
+    account_id = addr_entry.get("account_id")
+    if not account_id:
+        raise SystemExit(f"Sender {sender} has no account_id in sidecar for {network}; " "run register_accounts first.")
+
+    client = client_factory(pysui_config)
+    txn = await client.transaction(private_fund=True)
+    await txn.merge_private_funds(coin_type=token_type, account=account_id)
+
+    if args.mode == "simulate":
+        handle_result(
+            await client.execute(
+                command=SimulateTransactionKind(
+                    tx_kind=await txn.raw_kind(),
+                    tx_meta={"sender": sender},
+                    gas_selection=True,
+                )
+            )
+        )
+    else:
+        txdict = await txn.build_and_sign()
+        result = await client.execute(command=ExecuteTransaction(**txdict))
+        handle_result(result)
+        if result.is_ok() and result.result_data.effects.status.success:
+            await _append_history(
+                sidecar=sidecar,
+                sidecar_file=sidecar_file,
+                network=network,
+                address=sender,
+                coin_type=token_type,
+                digest=result.result_data.digest,
+                client=client,
+            )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -435,6 +567,31 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional directory containing the sidecar (default: ~/.pysui).",
     )
+    merge_pf = subparsers.add_parser(
+        "merge_private_funds",
+        help="Merge a sender's pending + public deposits into their active balance (simulate or execute).",
+    )
+    merge_pf.add_argument(
+        "--sender",
+        default=None,
+        help="Sender / account-owner Sui address (default: active PysuiConfiguration address).",
+    )
+    merge_pf.add_argument(
+        "--token-type",
+        required=True,
+        help="The confidential coin type (T) to merge.",
+    )
+    merge_pf.add_argument(
+        "--mode",
+        choices=["simulate", "execute"],
+        default="simulate",
+        help="Simulate (default) or execute the merge transaction.",
+    )
+    merge_pf.add_argument(
+        "--path",
+        default=None,
+        help="Optional directory containing the sidecar (default: ~/.pysui).",
+    )
     return parser
 
 
@@ -453,6 +610,8 @@ async def main(*, pysui_config: PysuiConfiguration) -> None:
         await register_private_funds(args=args, pysui_config=pysui_config)
     elif args.command == "wrap_private_funds":
         await wrap_private_funds(args=args, pysui_config=pysui_config)
+    elif args.command == "merge_private_funds":
+        await merge_private_funds(args=args, pysui_config=pysui_config)
     # Future async commands dispatch with await, e.g.:
     # elif args.command == "transfer":
     #     await transfer(args=args, pysui_config=pysui_config)
@@ -485,36 +644,46 @@ if __name__ == "__main__":
         # ]
         # Default run when invoked with no CLI args (e.g. from the debugger);
         # real command-line arguments take precedence when provided.
+        # sys.argv = [
+        #     "ucs_private_funds_example.py",
+        #     "wrap_private_funds",
+        #     "--receiver",
+        #     "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
+        #     "--token-type",
+        #     "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
+        #     "--amount",
+        #     "10000000",
+        #     # "--sender",
+        #     # "0x...",
+        #     # "--coin",
+        #     # "0x...",
+        #     "--memo",
+        #     "hello",
+        #     "--mode",
+        #     "execute",
+        # ]
         sys.argv = [
             "ucs_private_funds_example.py",
-            "wrap_private_funds",
-            "--receiver",
-            "0xa9e2db385f055cc0215a3cde268b76270535b9443807514f183be86926c219f4",
+            "merge_private_funds",
             "--token-type",
             "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
-            "--amount",
-            "1000000",
             # "--sender",
             # "0x...",
-            # "--coin",
-            # "0x...",
-            # "--memo",
-            # "hello",
-            # "--mode",
-            # "execute",
+            "--mode",
+            "execute",
         ]
-    # sys.argv = [
-    #     "ucs_private_funds_example.py",
-    #     "register_accounts",
-    #     "0xADDRESS_ONE",
-    #     "--path",
-    #     "~/.pwallet",
-    # ]
+        # sys.argv = [
+        #     "ucs_private_funds_example.py",
+        #     "register_accounts",
+        #     "0xADDRESS_ONE",
+        #     "--path",
+        #     "~/.pwallet",
+        # ]
 
     _pysui_config = PysuiConfiguration(
         # Uncomment one group:
-        group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
-        # group_name=PysuiConfiguration.SUI_GRPC_GROUP,
+        # group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+        group_name=PysuiConfiguration.SUI_GRPC_GROUP,
         profile_name="devnet",
         # profile_name="testnet",
         # profile_name="mainnet",

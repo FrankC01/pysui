@@ -79,9 +79,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
     _protocol: ClassVar[str] = "grpc"
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_clients.GrpcProtocolClient.__init__")
-    def __init__(
-        self, *, pysui_config: PysuiConfiguration, default_header: dict | None = None
-    ):
+    def __init__(self, *, pysui_config: PysuiConfiguration, default_header: dict | None = None):
         """Initializes client.
 
         :param pysui_config: Configuration for interfaces
@@ -118,9 +116,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             )
         )
         if result.is_ok() and hasattr(result.result_data.epoch, "protocol_config"):
-            self._protocol_config = _map_pconstraints(
-                result.result_data.epoch.protocol_config
-            )
+            self._protocol_config = _map_pconstraints(result.result_data.epoch.protocol_config)
             return
         raise ValueError(f"protocol fetch returned {result.result_string}")
 
@@ -167,13 +163,19 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         """
         from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
-        if private_fund:
-            raise RuntimeError("PrivateFunds is GraphQL-only during beta")
         kwargs["client"] = self
+        if private_fund:
+            from pysui.private_transfer._ext import raise_for_crypto
+            from pysui.private_transfer.transaction import PrivateFundsTransaction
+
+            raise_for_crypto()
+            return PrivateFundsTransaction(**kwargs)
         return AsyncSuiTransaction(**kwargs)
 
     @instrumented("grpc.serial_executor")
-    async def serial_executor(self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions") -> "pysui.sui.sui_common.executors.serial_executor.SerialExecutor":
+    async def serial_executor(
+        self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions"
+    ) -> "pysui.sui.sui_common.executors.serial_executor.SerialExecutor":
         """Async factory: create and initialize a SerialExecutor.
 
         Performs coin selection, merging, and gas state seeding before returning
@@ -189,7 +191,9 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         return se
 
     @instrumented("grpc.parallel_executor")
-    async def parallel_executor(self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions") -> "pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor":
+    async def parallel_executor(
+        self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions"
+    ) -> "pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor":
         """Async factory: create and initialize a ParallelExecutor.
 
         Performs coin selection and gas state seeding before returning
@@ -205,9 +209,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         return pe
 
     @instrumented("grpc._dispatch_grpc_request")
-    async def _dispatch_grpc_request(
-        self, request: absreq.PGRPC_Request, **kwargs
-    ) -> SuiRpcResult:
+    async def _dispatch_grpc_request(self, request: absreq.PGRPC_Request, **kwargs) -> SuiRpcResult:
         """Resolve gRPC service from request and execute it.
 
         :param request: Pysui gRPC request
@@ -220,26 +222,16 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         srv_req: betterproto2.Message
         match request.service:
             case absreq.Service.STATE:
-                srv_fn, srv_req = request.to_request(
-                    stub=sui_prot.StateServiceStub(self._channel)
-                )
+                srv_fn, srv_req = request.to_request(stub=sui_prot.StateServiceStub(self._channel))
             case absreq.Service.LEDGER:
-                srv_fn, srv_req = request.to_request(
-                    stub=sui_prot.LedgerServiceStub(self._channel)
-                )
+                srv_fn, srv_req = request.to_request(stub=sui_prot.LedgerServiceStub(self._channel))
             case absreq.Service.TRANSACTION:
-                srv_fn, srv_req = request.to_request(
-                    stub=sui_prot.TransactionExecutionServiceStub(self._channel)
-                )
+                srv_fn, srv_req = request.to_request(stub=sui_prot.TransactionExecutionServiceStub(self._channel))
             case absreq.Service.MOVEPACKAGE:
-                srv_fn, srv_req = request.to_request(
-                    stub=sui_prot.MovePackageServiceStub(self._channel)
-                )
+                srv_fn, srv_req = request.to_request(stub=sui_prot.MovePackageServiceStub(self._channel))
             # Subscriptions are called synchronously on first fetch
             case absreq.Service.SUBSCRIPTION:
-                srv_fn, srv_req = request.to_request(
-                    stub=sui_prot.SubscriptionServiceStub(self._channel)
-                )
+                srv_fn, srv_req = request.to_request(stub=sui_prot.SubscriptionServiceStub(self._channel))
                 try:
                     logger.info("Dispatching %s", type(request).__name__)
                     logger.debug("Request detail: %s", request)
@@ -252,13 +244,9 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
                     return SuiRpcResult(False, e.args)
 
             case absreq.Service.SIGNATURE:
-                srv_fn, srv_req = request.to_request(
-                    stub=sui_prot.SignatureVerificationServiceStub(self._channel)
-                )
+                srv_fn, srv_req = request.to_request(stub=sui_prot.SignatureVerificationServiceStub(self._channel))
             case absreq.Service.NAMESERVICE:
-                srv_fn, srv_req = request.to_request(
-                    stub=sui_prot.NameServiceStub(self._channel)
-                )
+                srv_fn, srv_req = request.to_request(stub=sui_prot.NameServiceStub(self._channel))
             case _:
                 raise NotImplementedError(f"{request.service} not implemented.")
 
@@ -286,13 +274,10 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
     @deprecated(
         version="0.99.0",
         reason=(
-            "Use AsyncClientBase.execute(command=...) with a SuiCommand instance instead. "
-            "No removal timeline set."
+            "Use AsyncClientBase.execute(command=...) with a SuiCommand instance instead. " "No removal timeline set."
         ),
     )
-    async def execute_grpc_request(
-        self, *, request: absreq.PGRPC_Request, **kwargs
-    ) -> SuiRpcResult:
+    async def execute_grpc_request(self, *, request: absreq.PGRPC_Request, **kwargs) -> SuiRpcResult:
         """Execute a raw gRPC request directly.
 
         kwargs can include:
@@ -324,9 +309,7 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
         :rtype: SuiRpcResult
         """
         if not isinstance(command, SuiCommand):
-            return SuiRpcResult(
-                False, f"Expected SuiCommand, got {type(command).__name__}", None
-            )
+            return SuiRpcResult(False, f"Expected SuiCommand, got {type(command).__name__}", None)
         try:
             request = command.grpc_request()
         except NotImplementedError:
@@ -340,7 +323,6 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             kwargs["metadata"] = headers
 
         return await self._dispatch_grpc_request(request, **kwargs)
-
 
 
 @sync_instrumented("pysui.sui.sui_grpc.pgrpc_clients._clean_url")

@@ -190,3 +190,48 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             ],
             type_arguments=[coin_type_str],
         )
+
+    @instrumented(
+        "pysui.private_transfer.transaction.PrivateFundsTransaction.merge_private_funds"
+    )
+    async def merge_private_funds(
+        self,
+        *,
+        coin_type: Union[str, bcs.TypeTag],
+        account: str,
+    ) -> None:
+        """Build the Confidential Transfer merge PTB for an owner's account.
+
+        Folds all pending (encrypted) deposits and the plaintext ``public_balance``
+        for ``coin_type`` into the confidential ``active`` balance of ``account``,
+        zeroing ``public_balance``. Must be done before wrapped/deposited value can
+        be spent in a confidential transfer. Owner-only: the transaction sender must
+        be the account owner (any ``Auth<T>`` for the owner is accepted).
+
+        :param coin_type: The confidential coin type ``T`` (type string or ``bcs.TypeTag``).
+        :type coin_type: Union[str, bcs.TypeTag]
+        :param account: The owner's ``Account`` object id (``0x`` hex string).
+        :type account: str
+        """
+        group = self._pf_config.active_group
+        package_id = group.package_id
+        coin_type_str = (
+            coin_type.type_tag_to_str()
+            if isinstance(coin_type, bcs.TypeTag)
+            else coin_type
+        )
+        confidential_token = utils.confidential_token_id(
+            package_id=package_id,
+            token_registry_id=group.token_registry,
+            coin_type=coin_type_str,
+        )
+        auth = await self.move_call(
+            target=f"{package_id}::contra::authorize_as_sender",
+            arguments=[confidential_token],
+            type_arguments=[coin_type_str],
+        )
+        await self.move_call(
+            target=f"{package_id}::contra::merge",
+            arguments=[account, auth],
+            type_arguments=[coin_type_str],
+        )
