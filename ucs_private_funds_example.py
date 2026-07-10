@@ -278,7 +278,13 @@ async def register_private_funds(*, args: argparse.Namespace, pysui_config: Pysu
 
     client = client_factory(pysui_config)
     try:
-        txn = await client.transaction(private_fund=True)
+        # contra::register_internal asserts auth.owner == account.owner, and
+        # authorize_as_sender binds Auth.owner to the tx sender: the owner must sign.
+        txn = await client.transaction(
+            private_fund=True,
+            initial_sender=address,
+            initial_sponsor=args.sponsor,
+        )
         await txn.register_private_funds(coin_type=coin_type, owner=address, elgamal_public_key=elgamal_public_key)
 
         if args.mode == "simulate":
@@ -352,7 +358,11 @@ async def wrap_private_funds(*, args: argparse.Namespace, pysui_config: PysuiCon
             raise SystemExit(f"Failed to fetch {token_type} coins for sender {sender}.")
         coins = coins_result.result_data.objects
 
-        txn = await client.transaction(private_fund=True)
+        txn = await client.transaction(
+            private_fund=True,
+            initial_sender=sender,
+            initial_sponsor=args.sponsor,
+        )
 
         if args.coin is not None:
             coin_to_wrap = next((c for c in coins if c.object_id == args.coin), None)
@@ -440,7 +450,11 @@ async def merge_private_funds(*, args: argparse.Namespace, pysui_config: PysuiCo
 
     client = client_factory(pysui_config)
     try:
-        txn = await client.transaction(private_fund=True)
+        txn = await client.transaction(
+            private_fund=True,
+            initial_sender=sender,
+            initial_sponsor=args.sponsor,
+        )
         await txn.merge_private_funds(coin_type=token_type, account=account_id)
 
         if args.mode == "simulate":
@@ -518,7 +532,11 @@ async def transfer_private_funds(*, args: argparse.Namespace, pysui_config: Pysu
 
     client = client_factory(pysui_config)
     try:
-        txn = await client.transaction(private_fund=True)
+        txn = await client.transaction(
+            private_fund=True,
+            initial_sender=sender,
+            initial_sponsor=args.sponsor,
+        )
         await txn.transfer_private_funds(
             coin_type=token_type,
             sender_account=account_id,
@@ -598,7 +616,11 @@ async def unwrap_private_funds(*, args: argparse.Namespace, pysui_config: PysuiC
 
     client = client_factory(pysui_config)
     try:
-        txn = await client.transaction(private_fund=True)
+        txn = await client.transaction(
+            private_fund=True,
+            initial_sender=sender,
+            initial_sponsor=args.sponsor,
+        )
         unwrapped_coin = await txn.unwrap_private_funds(
             coin_type=token_type,
             account=account_id,
@@ -736,6 +758,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="The confidential coin type (T) to register for; must match a sidecar entry for the address.",
     )
     register_pf.add_argument(
+        "--sponsor",
+        default=None,
+        help="Optional sponsor Sui address that pays gas (default: the sender). Sponsor's keypair must exist in the PysuiConfiguration.",
+    )
+    register_pf.add_argument(
         "--mode",
         choices=["simulate", "execute"],
         default="simulate",
@@ -754,6 +781,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--sender",
         default=None,
         help="Sender / coin-owner Sui address (default: active PysuiConfiguration address).",
+    )
+    wrap_pf.add_argument(
+        "--sponsor",
+        default=None,
+        help="Optional sponsor Sui address that pays gas (default: the sender). Sponsor's keypair must exist in the PysuiConfiguration.",
     )
     wrap_pf.add_argument(
         "--receiver",
@@ -803,6 +835,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Sender / account-owner Sui address (default: active PysuiConfiguration address).",
     )
     merge_pf.add_argument(
+        "--sponsor",
+        default=None,
+        help="Optional sponsor Sui address that pays gas (default: the sender). Sponsor's keypair must exist in the PysuiConfiguration.",
+    )
+    merge_pf.add_argument(
         "--token-type",
         required=True,
         help="The confidential coin type (T) to merge.",
@@ -826,6 +863,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--sender",
         default=None,
         help="Sender / account-owner Sui address (default: active PysuiConfiguration address).",
+    )
+    transfer_pf.add_argument(
+        "--sponsor",
+        default=None,
+        help="Optional sponsor Sui address that pays gas (default: the sender). Sponsor's keypair must exist in the PysuiConfiguration.",
     )
     transfer_pf.add_argument(
         "--recipient",
@@ -870,6 +912,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--sender",
         default=None,
         help="Sender / account-owner Sui address (default: active PysuiConfiguration address).",
+    )
+    unwrap_pf.add_argument(
+        "--sponsor",
+        default=None,
+        help="Optional sponsor Sui address that pays gas (default: the sender). Sponsor's keypair must exist in the PysuiConfiguration.",
     )
     unwrap_pf.add_argument(
         "--recipient",
@@ -1024,21 +1071,21 @@ if __name__ == "__main__":
         # ]
         # Unwrap draws on `active` only -- run merge_private_funds first, as its
         # own transaction, if value is still in `pending` or `public_balance`.
-        sys.argv = [
-            "ucs_private_funds_example.py",
-            "unwrap_private_funds",
-            "--token-type",
-            "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
-            "--amount",
-            "10000000",
-            # "--sender",
-            # "0x...",
-            # "--recipient",
-            # "0x...",
-            "--mode",
-            # "simulate",
-            "execute",
-        ]
+        # sys.argv = [
+        #     "ucs_private_funds_example.py",
+        #     "unwrap_private_funds",
+        #     "--token-type",
+        #     "0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN",
+        #     "--amount",
+        #     "10000000",
+        #     # "--sender",
+        #     # "0x...",
+        #     # "--recipient",
+        #     # "0x...",
+        #     "--mode",
+        #     # "simulate",
+        #     "execute",
+        # ]
         # sys.argv = [
         #     "ucs_private_funds_example.py",
         #     "account_balances",
@@ -1054,6 +1101,7 @@ if __name__ == "__main__":
         #     "--path",
         #     "~/.pwallet",
         # ]
+        pass
 
     _pysui_config = PysuiConfiguration(
         # Uncomment one group:
