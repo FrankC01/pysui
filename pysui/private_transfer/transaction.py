@@ -589,6 +589,135 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             type_arguments=[coin_type_str],
         )
 
+    @instrumented(
+        "pysui.private_transfer.transaction.PrivateFundsTransaction."
+        "rotate_account_private_funds_keys"
+    )
+    async def rotate_account_private_funds_keys(
+        self,
+        *,
+        coin_type: str,
+        account: str,
+        old_private: bytes,
+        old_public: bytes,
+        new_private: bytes,
+        new_public: bytes,
+    ) -> None:
+        """Build the Confidential Transfer key-rotation (rekey) PTB for coin type ``T``.
+
+        Assembles the single ``set_public_key<T>`` transaction that rotates the
+        owner's Twisted-ElGamal (Confidential Transfer) keypair for the existing,
+        registered ``account``: re-encrypt the ``active`` balance from the old
+        public key to the new one without decrypting it. This is the entire
+        transaction -- the caller drives simulation or execution of the built
+        builder afterward.
+
+        Permissionless rekey only. This method authorizes via
+        ``authorize_as_sender``, which is valid only for tokens whose policy
+        leaves the ``PERMISSIONED_REGISTER`` operation permissionless (the same
+        gate ``register`` uses). Tokens whose policy makes registration/rekey
+        permissioned require a different authorization path and are not supported
+        by this method.
+
+        Given the old and new keypairs, this method fetches the account's current
+        ``active`` balance, derives the ``session_id``, and runs ``rekey_proofs``
+        internally to produce the rotated handles and proof before assembling the
+        PTB. The caller generates the new keypair and, on successful execution,
+        persists it in place of the old one; on failure the previous keypair
+        remains in effect.
+
+        This method enforces one precondition itself: it raises ``ValueError`` if
+        the account has pending deposits (``pending != 0``), which must be folded
+        into ``active`` via ``merge_private_funds`` first. The caller is
+        responsible for the remaining preconditions: the ``account`` is registered
+        and has zero auditors (m = 0); ``key_encryption`` is passed on-chain as
+        ``None`` for the m = 0 scope.
+
+        :param coin_type: The confidential coin type ``T`` (fully-qualified type string).
+        :type coin_type: str
+        :param account: The existing shared ``Account`` object id (0x hex string).
+            The owner is the implicit transaction signer, not a parameter.
+        :type account: str
+        :param old_private: The account's current 32-byte Twisted-ElGamal private key.
+        :type old_private: bytes
+        :param old_public: The account's current 32-byte Twisted-ElGamal public key.
+        :type old_public: bytes
+        :param new_private: The new 32-byte Twisted-ElGamal private key to rotate to.
+        :type new_private: bytes
+        :param new_public: The new 32-byte Twisted-ElGamal public key to rotate to.
+        :type new_public: bytes
+        """
+        group = self._pf_config.active_group
+        package_id = group.package_id
+        _, pending, _ = await utils.account_balances(
+            client=self.client,
+            package_id=package_id,
+            account_id=account,
+            coin_type=coin_type,
+            private_key=old_private,
+        )
+        if pending != 0:
+            raise ValueError(
+                "Pending deposits present; run merge_private_funds before rekey"
+            )
+        owner_ta = await self._token_account(
+            coin_type=coin_type, account_id=account
+        )
+        old_active_balance = _flatten_encrypted_amount(amount=owner_ta.active.amount)
+        session_id = utils.session_id(
+            package_id=package_id,
+            account_id=account,
+            coin_type=coin_type,
+        )
+        proofs = _ext.rekey_proofs(
+            old_private,
+            old_public,
+            new_private,
+            new_public,
+            old_active_balance,
+            session_id,
+        )
+        confidential_token = utils.confidential_token_id(
+            package_id=package_id,
+            token_registry_id=group.token_registry,
+            coin_type=coin_type,
+        )
+        auth = await self.move_call(
+            target=f"{package_id}::contra::authorize_as_sender",
+            arguments=[confidential_token],
+            type_arguments=[coin_type],
+        )
+        new_pk = await self.move_call(
+            target="0x2::ristretto255::g_from_bytes",
+            arguments=[new_public],
+        )
+        handles = await self.move_call(
+            target=f"{package_id}::decode::g_vector",
+            arguments=[proofs["new_handles"]],
+        )
+        proof = await self.move_call(
+            target=f"{package_id}::decode::batched_ddh_proof",
+            arguments=[_chunk32(blob=proofs["rekey_proof"])],
+        )
+        key_encryption = await self.move_call(
+            target="0x1::option::none",
+            arguments=[],
+            type_arguments=[f"{package_id}::auditors::KeyEncryption"],
+        )
+        await self.move_call(
+            target=f"{package_id}::contra::set_public_key",
+            arguments=[
+                account,
+                auth,
+                confidential_token,
+                new_pk,
+                handles,
+                proof,
+                key_encryption,
+            ],
+            type_arguments=[coin_type],
+        )
+
 
 def _chunk32(*, blob: bytes) -> list[bytes]:
     """Split a byte blob into consecutive 32-byte parts.
