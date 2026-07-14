@@ -14,7 +14,7 @@ the ``pysui-crypto`` capability gate before construction, so neither ``__init__`
 the per-operation methods re-gate.
 """
 
-from typing import Union
+from typing import Protocol, Union
 
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from pysui.private_transfer.config import PrivateFundsConfig
@@ -24,6 +24,19 @@ from pysui.private_transfer import utils
 from pysui.sui.sui_common.instrumentation import instrumented
 from pysui.sui.sui_bcs import bcs
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+
+
+PERMISSIONED_REGISTER: int = 0
+PERMISSIONED_WRAP: int = 1
+PERMISSIONED_UNWRAP: int = 2
+
+
+class AuthFn(Protocol):
+    """Callable contract for constructing a policy-gated ``Auth<T>`` inside the current PTB."""
+
+    async def __call__(
+        self, *, txn: "PrivateFundsTransaction", confidential_token: str, permission_type: int
+    ) -> bcs.Argument: ...
 
 
 class PrivateFundsTransaction(AsyncSuiTransaction):
@@ -146,6 +159,71 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         )
 
     @instrumented(
+        "pysui.private_transfer.transaction.PrivateFundsTransaction.policy_register_private_funds"
+    )
+    async def policy_register_private_funds(
+        self,
+        *,
+        coin_type: str,
+        owner: str,
+        elgamal_public_key: bytes,
+        auth_fn: AuthFn,
+    ) -> None:
+        """Build the Confidential Transfer account-registration PTB for a policy-gated token.
+
+        Identical to :meth:`register_private_funds` except the ``Auth<T>`` capability is
+        constructed by the caller-supplied ``auth_fn`` (e.g. via ``contra::authorize_with_witness``)
+        instead of the permissionless ``contra::authorize_as_sender``. Use this when the
+        token's ``Policy`` gates ``PERMISSIONED_REGISTER``.
+
+        :param coin_type: The confidential coin type ``T`` (fully-qualified type string).
+        :type coin_type: str
+        :param owner: The Sui address being registered (the account owner).
+        :type owner: str
+        :param elgamal_public_key: The owner's 32-byte ElGamal (Confidential Transfer)
+            public key; passed to ``ristretto255::g_from_bytes`` to build the on-chain
+            ``group_ops::Element<G>`` value.
+        :type elgamal_public_key: bytes
+        :param auth_fn: Callable that builds and returns the ``Auth<T>`` argument, invoked as
+            ``auth_fn(txn=self, confidential_token=confidential_token, permission_type=PERMISSIONED_REGISTER)``.
+            Typically a :func:`functools.partial` binding a shared implementation's
+            ``target``/``coin_type`` positional arguments ahead of time.
+        :type auth_fn: AuthFn
+        """
+        group = self._pf_config.active_group
+        package_id = group.package_id
+        confidential_token = utils.confidential_token_id(
+            package_id=package_id,
+            token_registry_id=group.token_registry,
+            coin_type=coin_type,
+        )
+        account = await self.move_call(
+            target=f"{package_id}::contra::new_account",
+            arguments=[group.account_registry, owner],
+        )
+        auth = await auth_fn(
+            txn=self, confidential_token=confidential_token, permission_type=PERMISSIONED_REGISTER
+        )
+        key_encryption = await self.move_call(
+            target="0x1::option::none",
+            arguments=[],
+            type_arguments=[f"{package_id}::auditors::KeyEncryption"],
+        )
+        public_key = await self.move_call(
+            target="0x2::ristretto255::g_from_bytes",
+            arguments=[elgamal_public_key],
+        )
+        await self.move_call(
+            target=f"{package_id}::contra::register",
+            arguments=[account, auth, confidential_token, public_key, key_encryption],
+            type_arguments=[coin_type],
+        )
+        await self.move_call(
+            target=f"{package_id}::contra::share_account",
+            arguments=[account],
+        )
+
+    @instrumented(
         "pysui.private_transfer.transaction.PrivateFundsTransaction.wrap_private_funds"
     )
     async def wrap_private_funds(
@@ -202,6 +280,79 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             target=f"{package_id}::contra::authorize_as_sender",
             arguments=[confidential_token],
             type_arguments=[coin_type_str],
+        )
+        await self.move_call(
+            target=f"{package_id}::contra::wrap",
+            arguments=[
+                receiver,
+                auth,
+                confidential_token,
+                "0x403",
+                pool,
+                coin_to_wrap,
+                memo,
+            ],
+            type_arguments=[coin_type_str],
+        )
+
+    @instrumented(
+        "pysui.private_transfer.transaction.PrivateFundsTransaction.policy_wrap_private_funds"
+    )
+    async def policy_wrap_private_funds(
+        self,
+        *,
+        coin_type: Union[str, bcs.TypeTag],
+        receiver_address: Union[str, bcs.Address],
+        coin_to_wrap: Union[str, bcs.Argument, sui_prot.Object],
+        auth_fn: AuthFn,
+        memo: Union[str, bytes] = b"",
+    ) -> None:
+        """Build the Confidential Transfer wrap PTB for a whole coin, for a policy-gated token.
+
+        Identical to :meth:`wrap_private_funds` except the ``Auth<T>`` capability is
+        constructed by the caller-supplied ``auth_fn`` (e.g. via ``contra::authorize_with_witness``)
+        instead of the permissionless ``contra::authorize_as_sender``. Use this when the
+        token's ``Policy`` gates ``PERMISSIONED_WRAP``.
+
+        :param coin_type: The confidential coin type ``T`` (type string or ``bcs.TypeTag``).
+        :type coin_type: Union[str, bcs.TypeTag]
+        :param receiver_address: The recipient's Sui address (``0x`` hex string or ``bcs.Address``).
+        :type receiver_address: Union[str, bcs.Address]
+        :param coin_to_wrap: The ``Coin<T>`` object to consume — an object id string, a
+            ``bcs.Argument``, or an already-resolved ``sui_prot.Object``.
+        :type coin_to_wrap: Union[str, bcs.Argument, sui_prot.Object]
+        :param auth_fn: Callable that builds and returns the ``Auth<T>`` argument, invoked as
+            ``auth_fn(txn=self, confidential_token=confidential_token, permission_type=PERMISSIONED_WRAP)``.
+            Typically a :func:`functools.partial` binding a shared implementation's
+            ``target``/``coin_type`` positional arguments ahead of time.
+        :type auth_fn: AuthFn
+        :param memo: Optional opaque metadata emitted in the on-chain wrap event
+            (``str`` is utf-8 encoded; defaults to empty).
+        :type memo: Union[str, bytes]
+        """
+        group = self._pf_config.active_group
+        package_id = group.package_id
+        coin_type_str = (
+            coin_type.type_tag_to_str()
+            if isinstance(coin_type, bcs.TypeTag)
+            else coin_type
+        )
+        confidential_token = utils.confidential_token_id(
+            package_id=package_id,
+            token_registry_id=group.token_registry,
+            coin_type=coin_type_str,
+        )
+        pool = utils.pool_id(
+            package_id=package_id,
+            confidential_token_id=confidential_token,
+        )
+        receiver = utils.account_id(
+            package_id=package_id,
+            account_registry_id=group.account_registry,
+            owner=receiver_address,
+        )
+        auth = await auth_fn(
+            txn=self, confidential_token=confidential_token, permission_type=PERMISSIONED_WRAP
         )
         await self.move_call(
             target=f"{package_id}::contra::wrap",
@@ -552,6 +703,143 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             target=f"{package_id}::contra::authorize_as_sender",
             arguments=[confidential_token],
             type_arguments=[coin_type_str],
+        )
+        new_balance_amount = await self.move_call(
+            target=f"{package_id}::decode::encrypted_amount",
+            arguments=[_chunk32(blob=proofs["new_balance_amount"])],
+        )
+        consistency_proof = await self.move_call(
+            target=f"{package_id}::decode::consistency_proof",
+            arguments=[_chunk32(blob=proofs["consistency_proofs"][0])],
+        )
+        consistency_proof_vector = await self.make_move_vector(
+            items=[consistency_proof],
+            item_type=f"{package_id}::encrypted_amount::ConsistencyProof",
+        )
+        new_balance_proof = await self.move_call(
+            target=f"{package_id}::encrypted_amount::new_well_formed_proof",
+            arguments=[proofs["range_proofs"], consistency_proof_vector],
+        )
+        balance_proof = await self.move_call(
+            target=f"{package_id}::decode::ddh_proof",
+            arguments=[_chunk32(blob=proofs["balance_proof"])],
+        )
+        return await self.move_call(
+            target=f"{package_id}::contra::unwrap",
+            arguments=[
+                account,
+                auth,
+                confidential_token,
+                "0x403",
+                pool,
+                new_balance_amount,
+                new_balance_proof,
+                amount,
+                balance_proof,
+            ],
+            type_arguments=[coin_type_str],
+        )
+
+    @instrumented(
+        "pysui.private_transfer.transaction.PrivateFundsTransaction.policy_unwrap_private_funds"
+    )
+    async def policy_unwrap_private_funds(
+        self,
+        *,
+        coin_type: Union[str, bcs.TypeTag],
+        account: str,
+        amount: int,
+        account_private_key: bytes,
+        account_public_key: bytes,
+        auth_fn: AuthFn,
+    ) -> bcs.Argument:
+        """Build the Confidential Transfer unwrap PTB for a policy-gated token.
+
+        Identical to :meth:`unwrap_private_funds` except the ``Auth<T>`` capability is
+        constructed by the caller-supplied ``auth_fn`` (e.g. via ``contra::authorize_with_witness``)
+        instead of the permissionless ``contra::authorize_as_sender``. Use this when the
+        token's ``Policy`` gates ``PERMISSIONED_UNWRAP``.
+
+        Unwrap draws on the ``active`` balance only. Value credited to ``pending`` by an
+        inbound ``transfer_private_funds``, or to ``public_balance`` by ``wrap_private_funds``,
+        is invisible here until ``merge_private_funds`` folds it into ``active``. Because
+        merge rewrites the ``active`` ciphertext that the balance proof is bound to, the
+        merge must land in a **separate transaction** before this one is built.
+
+        The plaintext new balance is computed client-side as ``active_balance - amount``:
+        pysui-crypto is a pure prover and performs no overspend check, so the balance is
+        decrypted here and the unwrap rejected locally when ``amount`` exceeds it.
+
+        The transaction sender must be ``account``'s owner.
+
+        :param coin_type: The confidential coin type ``T`` (type string or ``bcs.TypeTag``).
+        :type coin_type: Union[str, bcs.TypeTag]
+        :param account: The owner's ``Account`` object id (``0x`` hex string).
+        :type account: str
+        :param amount: The plaintext amount to withdraw from the confidential active balance.
+        :type amount: int
+        :param account_private_key: The account's 32-byte Twisted-ElGamal private key. This is
+            the confidential-transfer keypair, not the owner's Sui signing key.
+        :type account_private_key: bytes
+        :param account_public_key: The account's 32-byte Twisted-ElGamal public key. This is
+            the confidential-transfer keypair, not the owner's Sui signing key.
+        :type account_public_key: bytes
+        :param auth_fn: Callable that builds and returns the ``Auth<T>`` argument, invoked as
+            ``auth_fn(txn=self, confidential_token=confidential_token, permission_type=PERMISSIONED_UNWRAP)``.
+            Typically a :func:`functools.partial` binding a shared implementation's
+            ``target``/``coin_type`` positional arguments ahead of time.
+        :type auth_fn: AuthFn
+        :raises ValueError: If ``amount`` exceeds the decrypted confidential active balance.
+        :return: The unwrapped ``Coin<T>`` as a PTB result argument.
+        :rtype: bcs.Argument
+        """
+        group = self._pf_config.active_group
+        package_id = group.package_id
+        coin_type_str = (
+            coin_type.type_tag_to_str()
+            if isinstance(coin_type, bcs.TypeTag)
+            else coin_type
+        )
+        confidential_token = utils.confidential_token_id(
+            package_id=package_id,
+            token_registry_id=group.token_registry,
+            coin_type=coin_type_str,
+        )
+        pool = utils.pool_id(
+            package_id=package_id,
+            confidential_token_id=confidential_token,
+        )
+
+        owner_ta = await self._token_account(
+            coin_type=coin_type_str, account_id=account
+        )
+        old_active_balance = _flatten_encrypted_amount(amount=owner_ta.active.amount)
+
+        active_balance = _ext.decrypt_balance(
+            account_private_key, old_active_balance, _ext.get_bsgs_table()
+        )
+        if amount > active_balance:
+            raise ValueError(
+                f"Insufficient confidential active balance: have {active_balance}, need {amount}"
+            )
+        new_balance = active_balance - amount
+
+        session_id = utils.session_id(
+            package_id=package_id,
+            account_id=account,
+            coin_type=coin_type_str,
+        )
+        proofs = _ext.unwrap_proofs(
+            account_private_key,
+            account_public_key,
+            old_active_balance,
+            amount,
+            new_balance,
+            session_id,
+        )
+
+        auth = await auth_fn(
+            txn=self, confidential_token=confidential_token, permission_type=PERMISSIONED_UNWRAP
         )
         new_balance_amount = await self.move_call(
             target=f"{package_id}::decode::encrypted_amount",

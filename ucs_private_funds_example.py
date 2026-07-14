@@ -17,6 +17,7 @@ the first, ``validate_config``, resolves and validates a
 import argparse
 import asyncio
 import base64
+import functools
 import json
 import logging
 import sys
@@ -32,6 +33,7 @@ from pysui import (
     GetTransaction,
     GetCoins,
 )
+from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.config.confgroup import GroupProtocol
 from pysui.private_transfer import utils
 from pysui.private_transfer._ext import (
@@ -39,6 +41,7 @@ from pysui.private_transfer._ext import (
     raise_for_crypto,
 )
 from pysui.private_transfer.config import PrivateFundsConfig
+from pysui.private_transfer.transaction import PrivateFundsTransaction
 
 # ---------------------------------------------------------------------------
 # Fixed example parameters
@@ -348,6 +351,105 @@ async def register_private_funds(
                     digest=result.result_data.digest,
                     client=client,
                 )
+    finally:
+        await client.close()
+
+
+async def _authorize_as_sender_auth_fn(
+    target: str,
+    coin_type: str,
+    *,
+    txn: PrivateFundsTransaction,
+    confidential_token: str,
+    permission_type: int,
+) -> bcs.Argument:
+    """Reference ``AuthFn`` implementation mirroring the permissionless ``authorize_as_sender`` path.
+
+    Ignores ``permission_type`` since ``contra::authorize_as_sender`` takes no operation
+    argument; included only to satisfy the ``AuthFn`` protocol shape. Intended to validate
+    the ``policy_*`` callback-injection mechanism against a token whose policy is still
+    ``null`` — not a real policy-gated authorization.
+
+    :param target: Fully-qualified ``contra::authorize_as_sender`` Move target, pre-bound
+        via :func:`functools.partial`.
+    :type target: str
+    :param coin_type: The confidential coin type ``T``, pre-bound via :func:`functools.partial`.
+    :type coin_type: str
+    :param txn: The active transaction builder, supplied by the ``policy_*`` method at call time.
+    :type txn: PrivateFundsTransaction
+    :param confidential_token: The ``ConfidentialToken<T>`` object id, supplied at call time.
+    :type confidential_token: str
+    :param permission_type: The gated operation id; unused by this permissionless reference.
+    :type permission_type: int
+    :returns: The constructed ``Auth<T>`` PTB result argument.
+    :rtype: bcs.Argument
+    """
+    return await txn.move_call(
+        target=target,
+        arguments=[confidential_token],
+        type_arguments=[coin_type],
+    )
+
+
+async def register_private_funds_with_policy(
+    *,
+    args: argparse.Namespace,
+    pysui_config: PysuiConfiguration,
+) -> None:
+    """Simulate registering an address via the policy-gated PTB path.
+
+    Exercises :meth:`PrivateFundsTransaction.policy_register_private_funds` with the
+    reference :func:`_authorize_as_sender_auth_fn` callback, which reconstructs the
+    permissionless ``contra::authorize_as_sender`` call. Validates the ``auth_fn``
+    callback-injection mechanism (correct PTB command ordering, correct argument
+    threading) against the current devnet deployment, whose policy is still ``null``.
+
+    Generates a fresh Twisted-ElGamal keypair in-memory for the registration's public
+    key argument — the sidecar is never read or written by this command, since account
+    registration itself has no dependency on the sidecar-persisted ``account_id``
+    (that value is only needed by merge/unwrap/rotate on an already-registered account).
+    Simulate only; never executes.
+
+    :param args: Parsed CLI arguments (``address``, ``coin_type``, ``sponsor``).
+    :type args: argparse.Namespace
+    :param pysui_config: The shared pysui configuration.
+    :type pysui_config: PysuiConfiguration
+    """
+    raise_for_crypto()
+    address = args.address
+    coin_type = args.coin_type
+    elgamal_public_key = generate_twisted_elgamal_keypair()["public_key"]
+
+    pf_config = PrivateFundsConfig(pysui_config=pysui_config)
+    package_id = pf_config.active_group.package_id
+
+    client = client_factory(pysui_config)
+    try:
+        txn = await client.transaction(
+            private_fund=True,
+            initial_sender=address,
+            initial_sponsor=args.sponsor,
+        )
+        auth_fn = functools.partial(
+            _authorize_as_sender_auth_fn,
+            f"{package_id}::contra::authorize_as_sender",
+            coin_type,
+        )
+        await txn.policy_register_private_funds(
+            coin_type=coin_type,
+            owner=address,
+            elgamal_public_key=elgamal_public_key,
+            auth_fn=auth_fn,
+        )
+        handle_result(
+            await client.execute(
+                command=SimulateTransactionKind(
+                    tx_kind=await txn.raw_kind(),
+                    tx_meta={"sender": args.sponsor or address},
+                    gas_selection=True,
+                )
+            )
+        )
     finally:
         await client.close()
 
@@ -914,6 +1016,30 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional directory containing the sidecar (default: ~/.pysui).",
     )
+    register_policy_pf = subparsers.add_parser(
+        "register_private_funds_with_policy",
+        help=(
+            "Simulate registering a single address via the policy-gated PTB path "
+            "(policy_register_private_funds), using a reference authorize_as_sender-mirroring auth_fn."
+        ),
+    )
+    register_policy_pf.add_argument(
+        "address",
+        help="The Sui address to register (no prior sidecar entry required).",
+    )
+    register_policy_pf.add_argument(
+        "coin_type",
+        help="The confidential coin type (T) to register for.",
+    )
+    register_policy_pf.add_argument(
+        "--sponsor",
+        default=None,
+        help=(
+            "Optional sponsor Sui address that pays gas "
+            "(default: the sender). Sponsor's keypair must exist "
+            "in the PysuiConfiguration."
+        ),
+    )
     wrap_pf = subparsers.add_parser(
         "wrap_private_funds",
         help=("Wrap a coin (or split amount) into a receiver's " "confidential public balance (simulate or execute)."),
@@ -1179,6 +1305,8 @@ async def main(*, pysui_config: PysuiConfiguration) -> None:
         register_accounts(args=args, pysui_config=pysui_config)
     elif args.command == "register_private_funds":
         await register_private_funds(args=args, pysui_config=pysui_config)
+    elif args.command == "register_private_funds_with_policy":
+        await register_private_funds_with_policy(args=args, pysui_config=pysui_config)
     elif args.command == "wrap_private_funds":
         await wrap_private_funds(args=args, pysui_config=pysui_config)
     elif args.command == "merge_private_funds":
