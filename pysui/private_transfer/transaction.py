@@ -984,7 +984,7 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             arguments=[proofs["new_handles"]],
         )
         proof = await self.move_call(
-            target=f"{package_id}::decode::batched_ddh_proof",
+            target=f"{package_id}::decode::ddh_proof",
             arguments=[_chunk32(blob=proofs["rekey_proof"])],
         )
         key_encryption = await self.move_call(
