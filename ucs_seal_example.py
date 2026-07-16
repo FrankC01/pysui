@@ -28,6 +28,7 @@ from pysui import (
     client_factory,
     AsyncClientBase,
     ExecuteTransaction,
+    GetObject,
 )
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from pysui.zklogin_seal.config import ZkSealConfig
@@ -106,6 +107,24 @@ async def cmd_add_address(
         print(result.result_data.to_json(indent=2))
     else:
         print(f"  ERROR: {result.result_string}")
+
+
+async def cmd_show_allowlist(
+    *,
+    seal_client: SealClient,
+    args: argparse.Namespace,
+) -> None:
+    """Fetch and display an object's current on-chain state to inspect whether it's an allowlist."""
+    print("\n--- show-allowlist ---")
+
+    result = await seal_client.pysui_client.execute(
+        command=GetObject(object_id=args.id)
+    )
+    if result.is_ok():
+        print(f"  object ({args.id}):")
+        print(result.result_data.to_json(indent=2))
+    else:
+        print(f"  ERROR fetching object: {result.result_string}")
 
 
 async def cmd_demo(
@@ -209,6 +228,11 @@ async def run(pysui_config: PysuiConfiguration, args: argparse.Namespace) -> Non
                 seal_client=bob_seal_client,
                 args=args,
             )
+        elif args.command == "show-allowlist":
+            await cmd_show_allowlist(
+                seal_client=bob_seal_client,
+                args=args,
+            )
         elif args.command == "demo":
             # Alice's client — separate PysuiConfiguration with address=args.receiver
             alice_pysui_config = PysuiConfiguration(
@@ -259,6 +283,17 @@ def main() -> None:
         required=True,
         metavar="ADDR",
         help="Address to add to the allowlist",
+    )
+
+    sub_show = subparsers.add_parser(
+        "show-allowlist", help="Fetch and display an object to inspect whether it's an allowlist"
+    )
+    sub_show.add_argument(
+        "-i",
+        "--id",
+        required=True,
+        metavar="ID",
+        help="Object ID to fetch and inspect",
     )
 
     # demo
@@ -320,14 +355,14 @@ if __name__ == "__main__":
 
     # ── demo: full IBE roundtrip — Bob encrypts, Alice decrypts ──────────────
     # default: 2 non-committee key servers
-    sys.argv = [
-        "ucs_seal_example.py",
-        "demo",
-        "--data",
-        "Monday I've got Friday on my Mind.",
-        "--receiver",
-        "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28",
-    ]
+    # sys.argv = [
+    #     "ucs_seal_example.py",
+    #     "demo",
+    #     "--data",
+    #     "Monday I've got Friday on my Mind.",
+    #     "--receiver",
+    #     "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28",
+    # ]
     # sys.argv = ["ucs_seal_example.py", "demo", "--data", "hello from Bob", "--out", "/tmp/seal_encrypted.bin"]
     # mixed: 1 non-committee + 1 committee key server
     # sys.argv = [

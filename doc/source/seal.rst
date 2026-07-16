@@ -104,6 +104,11 @@ Mixed — one non-committee server plus one committee aggregator:
 
 The ``--committee`` flag in the example script switches between these two modes.
 
+Some key servers — independent (Permissioned) servers in particular, and some
+committee aggregators — require an API key sent as an HTTP header. Configure
+this per server via ``api_key_name``/``api_key`` on :doc:`zklogin_seal_config`
+before encrypting or decrypting against that server.
+
 Decrypting Data (Alice)
 -----------------------
 

@@ -18,6 +18,7 @@ from pysui.zklogin_seal.config import (
     SealKeyServer,
     SealKeyServerSet,
     _ZkSealConfigModel,
+    _CURRENT_ZKSEAL_CONFIG_VERSION,
 )
 
 
@@ -145,6 +146,26 @@ class TestDataclassSerialization:
         assert s2.object_id == s.object_id
         assert s2.url == s.url
 
+    def test_seal_key_server_api_key_fields_default_none(self):
+        s = SealKeyServer(alias="srv-1", object_id="0xabc", url="https://srv.example.com")
+        assert s.api_key_name is None
+        assert s.api_key is None
+        d = json.loads(s.to_json())
+        assert d["apiKeyName"] is None
+        assert d["apiKey"] is None
+
+    def test_seal_key_server_api_key_roundtrip(self):
+        s = SealKeyServer(
+            alias="srv-1", object_id="0xabc", url="https://srv.example.com",
+            api_key_name="X-API-Key", api_key="secret-value",
+        )
+        d = json.loads(s.to_json())
+        assert d["apiKeyName"] == "X-API-Key"
+        assert d["apiKey"] == "secret-value"
+        s2 = SealKeyServer.from_json(s.to_json())
+        assert s2.api_key_name == "X-API-Key"
+        assert s2.api_key == "secret-value"
+
     def test_seal_key_server_set_to_json_camelcase(self):
         ss = SealKeyServerSet(name="my-set", is_committee=True)
         d = json.loads(ss.to_json())
@@ -176,7 +197,7 @@ class TestDataclassSerialization:
     def test_model_version_field(self):
         m = _ZkSealConfigModel()
         d = json.loads(m.to_json())
-        assert d["version"] == 1
+        assert d["version"] == 2
 
     def test_model_roundtrip_with_groups(self):
         m = _ZkSealConfigModel(groups=[ZkSealNetworkGroup(group_name="devnet")])
@@ -257,7 +278,7 @@ class TestInitializeConfig:
     def test_version_is_1(self, tmp_path):
         ZkSealConfig._initialize_config(from_cfg_path=str(tmp_path))
         data = json.loads((tmp_path / "ZkSealConfig.json").read_text())
-        assert data["version"] == 1
+        assert data["version"] == 2
 
     def test_json_uses_camelcase_keys(self, tmp_path):
         ZkSealConfig._initialize_config(from_cfg_path=str(tmp_path))
@@ -660,6 +681,28 @@ class TestServerCrud:
         assert s.object_id == "0xdeadbeef"
         assert s.url == "https://new.srv.com"
 
+    def test_add_server_with_api_key(self, tmp_path):
+        cfg = _init_cfg(tmp_path)
+        cfg.add_server(
+            group_name="testnet", set_name="mysten-testnet",
+            alias="new-srv", object_id="0xdeadbeef", url="https://new.srv.com",
+            api_key_name="X-API-Key", api_key="secret-value",
+        )
+        s = cfg.get_server(group_name="testnet", set_name="mysten-testnet", alias="new-srv")
+        assert s is not None
+        assert s.api_key_name == "X-API-Key"
+        assert s.api_key == "secret-value"
+
+    def test_add_server_without_api_key_defaults_none(self, tmp_path):
+        cfg = _init_cfg(tmp_path)
+        cfg.add_server(
+            group_name="testnet", set_name="mysten-testnet",
+            alias="new-srv", object_id="0xdeadbeef", url="https://new.srv.com"
+        )
+        s = cfg.get_server(group_name="testnet", set_name="mysten-testnet", alias="new-srv")
+        assert s.api_key_name is None
+        assert s.api_key is None
+
     def test_add_server_duplicate_alias_raises(self, tmp_path):
         cfg = _init_cfg(tmp_path)
         with pytest.raises(ValueError, match="already exists"):
@@ -738,6 +781,36 @@ class TestServerCrud:
                 alias="mysten-testnet-1", url="x", persist=True
             )
             mock_save.assert_called_once()
+
+    def test_update_server_api_key(self, tmp_path):
+        cfg = _init_cfg(tmp_path)
+        cfg.update_server_api_key(
+            group_name="testnet", set_name="mysten-testnet",
+            alias="mysten-testnet-1", api_key_name="X-API-Key", api_key="secret-value",
+        )
+        s = cfg.get_server(
+            group_name="testnet", set_name="mysten-testnet", alias="mysten-testnet-1"
+        )
+        assert s.api_key_name == "X-API-Key"
+        assert s.api_key == "secret-value"
+
+    def test_update_server_api_key_persist_saves(self, tmp_path):
+        cfg = _init_cfg(tmp_path)
+        with patch.object(cfg, "save") as mock_save:
+            cfg.update_server_api_key(
+                group_name="testnet", set_name="mysten-testnet",
+                alias="mysten-testnet-1", api_key_name="X-API-Key", api_key="secret-value",
+                persist=True,
+            )
+            mock_save.assert_called_once()
+
+    def test_update_server_api_key_not_found_raises(self, tmp_path):
+        cfg = _init_cfg(tmp_path)
+        with pytest.raises(ValueError):
+            cfg.update_server_api_key(
+                group_name="testnet", set_name="mysten-testnet",
+                alias="does-not-exist", api_key_name="X-API-Key", api_key="secret-value",
+            )
 
     def test_get_server_returns_none_on_miss(self, tmp_path):
         cfg = _init_cfg(tmp_path)
@@ -897,6 +970,21 @@ class TestAddVerifiedServer:
         assert s is not None
         assert s.url == "https://fetched.url.com"
         assert s.object_id == "0xnew"
+
+    @pytest.mark.asyncio
+    async def test_add_verified_server_with_api_key(self, tmp_path):
+        cfg = _init_cfg(tmp_path)
+        client = AsyncMock()
+        client.execute.return_value = _make_ok_result("https://fetched.url.com")
+        await cfg.add_verified_server(
+            group_name="testnet", set_name="mysten-testnet",
+            alias="new-verified", object_id="0xnew", client=client,
+            api_key_name="X-API-Key", api_key="secret-value",
+        )
+        s = cfg.get_server(group_name="testnet", set_name="mysten-testnet", alias="new-verified")
+        assert s is not None
+        assert s.api_key_name == "X-API-Key"
+        assert s.api_key == "secret-value"
 
     @pytest.mark.asyncio
     async def test_always_saves(self, tmp_path):
@@ -1149,3 +1237,51 @@ class TestRoundTrip:
         cfg.save()
         cfg2 = ZkSealConfig(from_cfg_path=str(tmp_path))
         assert not any(g.group_name == "devnet" for g in cfg2._model.groups)
+
+
+class TestMigration:
+    def test_migrate_backlevel_version_bumps_and_saves(self, tmp_path):
+        _init_cfg(tmp_path)
+        cfg_file = tmp_path / "ZkSealConfig.json"
+        data = json.loads(cfg_file.read_text())
+        data["version"] = 1
+        cfg_file.write_text(json.dumps(data))
+
+        cfg2 = ZkSealConfig(from_cfg_path=str(tmp_path))
+
+        assert cfg2._model.version == _CURRENT_ZKSEAL_CONFIG_VERSION
+        on_disk = json.loads(cfg_file.read_text())
+        assert on_disk["version"] == _CURRENT_ZKSEAL_CONFIG_VERSION
+
+    def test_migrate_forces_save_even_when_persist_false(self, tmp_path):
+        _init_cfg(tmp_path)
+        cfg_file = tmp_path / "ZkSealConfig.json"
+        data = json.loads(cfg_file.read_text())
+        data["version"] = 1
+        cfg_file.write_text(json.dumps(data))
+
+        ZkSealConfig(from_cfg_path=str(tmp_path), persist=False)
+
+        on_disk = json.loads(cfg_file.read_text())
+        assert on_disk["version"] == _CURRENT_ZKSEAL_CONFIG_VERSION
+
+    def test_migrate_group_switch_stays_ephemeral_when_persist_false(self, tmp_path):
+        _init_cfg(tmp_path)
+        cfg_file = tmp_path / "ZkSealConfig.json"
+        data = json.loads(cfg_file.read_text())
+        original_active = data["activeGroupName"]
+        data["version"] = 1
+        cfg_file.write_text(json.dumps(data))
+
+        cfg2 = ZkSealConfig(from_cfg_path=str(tmp_path), group_name="testnet", persist=False)
+
+        assert cfg2.active_group.group_name == "testnet"
+        on_disk = json.loads(cfg_file.read_text())
+        assert on_disk["activeGroupName"] == original_active
+        assert on_disk["version"] == _CURRENT_ZKSEAL_CONFIG_VERSION
+
+    def test_no_migration_when_already_current_version(self, tmp_path):
+        _init_cfg(tmp_path)
+        with patch.object(ZkSealConfig, "save") as mock_save:
+            ZkSealConfig(from_cfg_path=str(tmp_path))
+            mock_save.assert_not_called()

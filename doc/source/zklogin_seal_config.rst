@@ -84,6 +84,35 @@ To resolve the URL automatically from the key server's on-chain dynamic fields:
         client=pysui_client,
     )
 
+Some key servers require an API key sent as an HTTP header. Pass ``api_key_name``
+and ``api_key`` to either call above:
+
+.. code-block:: python
+
+    cfg.add_server(
+        group_name="testnet",
+        set_name="my-custom-set",
+        alias="my-server-1",
+        object_id="0x<on-chain-object-id>",
+        url="https://my-key-server.example.com",
+        api_key_name="X-API-Key",
+        api_key="<your-api-key>",
+    )
+
+Or set them on an existing entry:
+
+.. code-block:: python
+
+    cfg.update_server_api_key(
+        group_name="testnet",
+        set_name="my-custom-set",
+        alias="my-server-1",
+        api_key_name="X-API-Key",
+        api_key="<your-api-key>",
+    )
+
+Both fields are optional and default to ``None``. Not all key servers require one.
+
 Refreshing Server URLs
 ----------------------
 
@@ -115,6 +144,15 @@ Or save explicitly at any point:
 .. code-block:: python
 
     cfg.save()
+
+Config Schema Version
+----------------------
+
+``ZkSealConfig`` tracks a schema version internally. If an older configuration
+file is loaded, missing fields are backfilled with their defaults and the file
+is written back out at the current schema version automatically — this happens
+regardless of the ``persist`` argument passed to the constructor, since it is a
+one-time upgrade rather than a runtime activation choice.
 
 Changing the Active Group
 -------------------------

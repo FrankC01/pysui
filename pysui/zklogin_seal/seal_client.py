@@ -5,6 +5,7 @@
 
 """SEAL key server client for encrypting and decrypting data."""
 from __future__ import annotations
+from typing import Optional
 
 import base64
 
@@ -247,14 +248,18 @@ class SealClient:
 
                 request_body = self._build_fetch_key_request(credentials, ptb_bcs, package_id_str)
 
+                headers = {
+                    "Client-Sdk-Version": "1.1.0",
+                    "Client-Sdk-Type": "rust",
+                }
+                if srv.api_key_name and srv.api_key:
+                    headers[srv.api_key_name] = srv.api_key
+
                 try:
                     resp = await http.post(
                         f"{srv.url.rstrip('/')}/v1/fetch_key",
                         json=request_body,
-                        headers={
-                            "Client-Sdk-Version": "1.1.0",
-                            "Client-Sdk-Type": "rust",
-                        },
+                        headers=headers,
                         timeout=30.0,
                     )
                     if resp.status_code != 200:
