@@ -43,11 +43,17 @@ class SealKeyServer:
     :type object_id: str
     :param url: Base URL of the key server
     :type url: str
+    :param api_key_name: HTTP header name for API key authentication, if required by the server
+    :type api_key_name: Optional[str], optional
+    :param api_key: API key value sent with api_key_name as an HTTP header, if required by the server
+    :type api_key: Optional[str], optional
     """
 
     alias: str
     object_id: str
     url: str
+    api_key_name: Optional[str] = None
+    api_key: Optional[str] = None
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -86,18 +92,22 @@ class ZkSealNetworkGroup:
     key_server_sets: list[SealKeyServerSet] = dataclasses.field(default_factory=list)
 
 
+_CURRENT_ZKSEAL_CONFIG_VERSION: int = 2
+"""Current ZkSealConfig schema version; bump when adding persisted fields."""
+
+
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
 @dataclasses.dataclass
 class _ZkSealConfigModel:
     """Internal serialization model for ZkSealConfig JSON persistence.
 
-    :param version: Configuration schema version, defaults to 1
+    :param version: Configuration schema version, defaults to the current schema version
     :type version: int, optional
     :param groups: Network groups defined in this configuration, defaults to empty list
     :type groups: list[ZkSealNetworkGroup], optional
     """
 
-    version: int = 1
+    version: int = _CURRENT_ZKSEAL_CONFIG_VERSION
     active_group_name: Optional[str] = None
     groups: list[ZkSealNetworkGroup] = dataclasses.field(default_factory=list)
 
@@ -135,6 +145,7 @@ class ZkSealConfig:
         self._model: _ZkSealConfigModel = _ZkSealConfigModel.from_json(
             self._config_file.read_text()
         )
+        self._migrate_if_needed()
         self._active_group: Optional[ZkSealNetworkGroup] = None
         self.make_active(group_name=group_name, persist=persist)
 
@@ -223,6 +234,12 @@ class ZkSealConfig:
         )
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text(model.to_json(indent=2))
+
+    def _migrate_if_needed(self) -> None:
+        """Bump ZkSealConfig schema version and persist if a backlevel config was loaded."""
+        if self._model.version < _CURRENT_ZKSEAL_CONFIG_VERSION:
+            self._model.version = _CURRENT_ZKSEAL_CONFIG_VERSION
+            self.save()
 
     def save(self, path: Optional[pathlib.Path] = None) -> None:
         """Persist the current configuration to disk.
@@ -486,6 +503,8 @@ class ZkSealConfig:
         alias: str,
         object_id: str,
         url: str,
+        api_key_name: Optional[str] = None,
+        api_key: Optional[str] = None,
         persist: bool = False,
     ) -> None:
         """Add a SEAL key server to a server set.
@@ -500,6 +519,10 @@ class ZkSealConfig:
         :type object_id: str
         :param url: Base URL of the key server
         :type url: str
+        :param api_key_name: HTTP header name for API key authentication, if required by the server
+        :type api_key_name: Optional[str], optional
+        :param api_key: API key value sent with api_key_name as an HTTP header, if required by the server
+        :type api_key: Optional[str], optional
         :param persist: Save the configuration after adding, defaults to False
         :type persist: bool, optional
         :raises ValueError: If an entry with this alias already exists in the set
@@ -507,7 +530,15 @@ class ZkSealConfig:
         server_set = self._get_server_set(group_name, set_name)
         if any(s.alias == alias for s in server_set.servers):
             raise ValueError(f"Server alias '{alias}' already exists in set '{set_name}'")
-        server_set.servers.append(SealKeyServer(alias=alias, object_id=object_id, url=url))
+        server_set.servers.append(
+            SealKeyServer(
+                alias=alias,
+                object_id=object_id,
+                url=url,
+                api_key_name=api_key_name,
+                api_key=api_key,
+            )
+        )
         if persist:
             self.save()
 
@@ -558,6 +589,41 @@ class ZkSealConfig:
         if server is None:
             raise ValueError(f"Server alias '{alias}' not found in set '{set_name}'")
         server.url = url
+        if persist:
+            self.save()
+
+    def update_server_api_key(
+        self,
+        *,
+        group_name: str,
+        set_name: str,
+        alias: str,
+        api_key_name: Optional[str] = None,
+        api_key: Optional[str] = None,
+        persist: bool = False,
+    ) -> None:
+        """Update the API key credentials for an existing SEAL key server.
+
+        :param group_name: Target network group identifier
+        :type group_name: str
+        :param set_name: Target server set name
+        :type set_name: str
+        :param alias: Alias of the server to update
+        :type alias: str
+        :param api_key_name: HTTP header name for API key authentication, if required by the server
+        :type api_key_name: Optional[str], optional
+        :param api_key: API key value sent with api_key_name as an HTTP header, if required by the server
+        :type api_key: Optional[str], optional
+        :param persist: Save the configuration after updating, defaults to False
+        :type persist: bool, optional
+        :raises ValueError: If the alias does not exist in the set
+        """
+        server_set = self._get_server_set(group_name, set_name)
+        server = next((s for s in server_set.servers if s.alias == alias), None)
+        if server is None:
+            raise ValueError(f"Server alias '{alias}' not found in set '{set_name}'")
+        server.api_key_name = api_key_name
+        server.api_key = api_key
         if persist:
             self.save()
 
@@ -658,6 +724,8 @@ class ZkSealConfig:
         alias: str,
         object_id: str,
         client: AsyncClientBase,
+        api_key_name: Optional[str] = None,
+        api_key: Optional[str] = None,
     ) -> None:
         """Resolve the key server URL from on-chain dynamic fields and add it to a set.
 
@@ -671,9 +739,21 @@ class ZkSealConfig:
         :type object_id: str
         :param client: Async pysui client used to query the chain
         :type client: AsyncClientBase
+        :param api_key_name: HTTP header name for API key authentication, if required by the server
+        :type api_key_name: Optional[str], optional
+        :param api_key: API key value sent with api_key_name as an HTTP header, if required by the server
+        :type api_key: Optional[str], optional
         """
         url = await self._fetch_server_url(object_id=object_id, client=client)
-        self.add_server(group_name=group_name, set_name=set_name, alias=alias, object_id=object_id, url=url)
+        self.add_server(
+            group_name=group_name,
+            set_name=set_name,
+            alias=alias,
+            object_id=object_id,
+            url=url,
+            api_key_name=api_key_name,
+            api_key=api_key,
+        )
         self.save()
 
     async def refresh_server_url(
