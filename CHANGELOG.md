@@ -5,12 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - Unpublished
+## [1.2.0] - 2026-07-17
 
 ### Added
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/393) Adds PartyObject encoding. Examples added to ucs_example.py in repo
-- Update ZkSealConfig to support apiKey/apiKeyName and automatic json config migration
+- [enhancement](https://github.com/FrankC01/pysui/issues/396) Update ZkSealConfig to support apiKey/apiKeyName and automatic json config migration
 
 ### Fixed
 

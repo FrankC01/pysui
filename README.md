@@ -43,12 +43,12 @@ Future releases are in branches named `release_X.Y.Z`
 
 ## PyPi current
 
-**Release-1.1.0 - Released 2026-06-23**
+**Release-1.2.0 - Released 2026-07-17**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
-This release brings _zkLogin and Mysten SEAL capabilities_ (optional install).
-In addition, _json export and import of transaction (PTB) compatible with Mystens TS-SDK_.
+This release adds _PartyObject encoding_ support.
+In addition, _ZkSealConfig now supports apiKey/apiKeyName with automatic json config migration_.
 
 ### FULL Documentation
 
