@@ -1592,23 +1592,27 @@ class GetModule(GetPackage):
             )
 
 
-class SubscribeCheckpoint(absreq.PGRPC_Request):
+class SubscribeCheckpoints(absreq.PGRPC_Request):
     """Subscribe to a feed of checkpoints."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeCheckpointsResponse
 
-    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoint.__init__")
+    @sync_instrumented(
+        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoints.__init__"
+    )
     def __init__(
         self,
         *,
         field_mask: Optional[list[str]] = None,
+        tx_filter: Optional[sui_prot.TransactionFilter] = None,
     ) -> None:
         """Initializer."""
         super().__init__(absreq.Service.SUBSCRIPTION)
         self.field_mask = self._field_mask(field_mask)
+        self.tx_filter = tx_filter
 
     @sync_instrumented(
-        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoint.to_request"
+        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoints.to_request"
     )
     def to_request(
         self, *, stub: sui_prot.SubscriptionServiceStub
@@ -1617,7 +1621,69 @@ class SubscribeCheckpoint(absreq.PGRPC_Request):
     ]:
         """."""
         return stub.subscribe_checkpoints, sui_prot.SubscribeCheckpointsRequest(
-            read_mask=self.field_mask
+            read_mask=self.field_mask, filter=self.tx_filter
+        )
+
+
+class SubscribeTransactions(absreq.PGRPC_Request):
+    """Subscribe to a feed of finalized transactions."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeTransactionsResponse
+
+    @sync_instrumented(
+        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeTransactions.__init__"
+    )
+    def __init__(
+        self,
+        *,
+        field_mask: Optional[list[str]] = None,
+        tx_filter: Optional[sui_prot.TransactionFilter] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.SUBSCRIPTION)
+        self.field_mask = self._field_mask(field_mask)
+        self.tx_filter = tx_filter
+
+    @sync_instrumented(
+        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeTransactions.to_request"
+    )
+    def to_request(
+        self, *, stub: sui_prot.SubscriptionServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.subscribe_transactions, sui_prot.SubscribeTransactionsRequest(
+            read_mask=self.field_mask, filter=self.tx_filter
+        )
+
+
+class SubscribeEvents(absreq.PGRPC_Request):
+    """Subscribe to a feed of emitted events."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeEventsResponse
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SubscribeEvents.__init__")
+    def __init__(
+        self,
+        *,
+        field_mask: Optional[list[str]] = None,
+        event_filter: Optional[sui_prot.EventFilter] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.SUBSCRIPTION)
+        self.field_mask = self._field_mask(field_mask)
+        self.event_filter = event_filter
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SubscribeEvents.to_request")
+    def to_request(
+        self, *, stub: sui_prot.SubscriptionServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.subscribe_events, sui_prot.SubscribeEventsRequest(
+            read_mask=self.field_mask, filter=self.event_filter
         )
 
 

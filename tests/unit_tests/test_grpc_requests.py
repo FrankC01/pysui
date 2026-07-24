@@ -14,10 +14,13 @@ Tests cover:
   - Default coin types for GetCoins and GetGas
 """
 
+from unittest.mock import Mock
+
 import pytest
 
 import pysui.sui.sui_grpc.pgrpc_requests as gr
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
+import pysui.sui.sui_grpc.pgrpc_filters as pgf
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.shared_types as shared_types
 
@@ -406,9 +409,60 @@ class TestMiscRequests:
         assert obj.page_size == 20
         assert obj.page_token == b"cursor"
 
-    def test_subscribe_checkpoint_service(self):
-        obj = gr.SubscribeCheckpoint()
+    def test_subscribe_checkpoints_service(self):
+        obj = gr.SubscribeCheckpoints()
         assert obj.service == absreq.Service.SUBSCRIPTION
+
+    def test_subscribe_checkpoints_to_request_no_filter(self):
+        obj = gr.SubscribeCheckpoints(field_mask=["sequence_number", "digest"])
+        stub = Mock()
+        fn, request = obj.to_request(stub=stub)
+        assert fn is stub.subscribe_checkpoints
+        assert isinstance(request, sui_prot.SubscribeCheckpointsRequest)
+        assert request.read_mask.paths == ["sequence_number", "digest"]
+        assert request.filter is None
+
+    def test_subscribe_checkpoints_to_request_with_filter(self):
+        tx_filter = pgf.build_transaction_filter(
+            terms=[[pgf.Literal(predicate="sender", value="0xabc")]]
+        )
+        obj = gr.SubscribeCheckpoints(tx_filter=tx_filter)
+        stub = Mock()
+        fn, request = obj.to_request(stub=stub)
+        assert fn is stub.subscribe_checkpoints
+        assert request.filter is tx_filter
+
+    def test_subscribe_transactions_service(self):
+        obj = gr.SubscribeTransactions()
+        assert obj.service == absreq.Service.SUBSCRIPTION
+
+    def test_subscribe_transactions_to_request(self):
+        tx_filter = pgf.build_transaction_filter(
+            terms=[[pgf.Literal(predicate="move_call", value="0xpkg::mod::fn")]]
+        )
+        obj = gr.SubscribeTransactions(field_mask=["digest"], tx_filter=tx_filter)
+        stub = Mock()
+        fn, request = obj.to_request(stub=stub)
+        assert fn is stub.subscribe_transactions
+        assert isinstance(request, sui_prot.SubscribeTransactionsRequest)
+        assert request.read_mask.paths == ["digest"]
+        assert request.filter is tx_filter
+
+    def test_subscribe_events_service(self):
+        obj = gr.SubscribeEvents()
+        assert obj.service == absreq.Service.SUBSCRIPTION
+
+    def test_subscribe_events_to_request(self):
+        event_filter = pgf.build_event_filter(
+            terms=[[pgf.Literal(predicate="event_type", value="0xpkg::mod::Event")]]
+        )
+        obj = gr.SubscribeEvents(field_mask=["digest"], event_filter=event_filter)
+        stub = Mock()
+        fn, request = obj.to_request(stub=stub)
+        assert fn is stub.subscribe_events
+        assert isinstance(request, sui_prot.SubscribeEventsRequest)
+        assert request.read_mask.paths == ["digest"]
+        assert request.filter is event_filter
 
     def test_verify_signature_stores_message_and_sig(self):
         obj = gr.VerifySignature(

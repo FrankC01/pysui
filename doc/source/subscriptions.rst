@@ -6,7 +6,7 @@ gRPC Checkpoint Subscription
 -----------------------------
 
 The gRPC transport supports native server-side streaming via
-:py:class:`pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoint`. The
+:py:class:`pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoints`. The
 client receives checkpoint events as an async iterator.
 
 .. note::
@@ -25,7 +25,7 @@ client receives checkpoint events as an async iterator.
         cfg = PysuiConfiguration(group_name=PysuiConfiguration.SUI_GRPC_GROUP)
         client = client_factory(cfg)  # returns GrpcProtocolClient
 
-        result = await client.execute(command=cmd.SubscribeCheckpoint())
+        result = await client.execute(command=cmd.SubscribeCheckpoints())
 
         count = 0
         async for checkpoint in result.result_data:
