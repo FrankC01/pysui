@@ -7,7 +7,7 @@
 
 import asyncio
 
-from pysui import PysuiConfiguration, SuiRpcResult, client_factory
+from pysui import PysuiConfiguration, SuiRpcResult, client_factory, GetProtocolConfig
 from pysui.sui.sui_common.client import PysuiClient
 import pysui.sui.sui_grpc.pgrpc_requests as rn
 
@@ -20,15 +20,16 @@ async def _protocol_version_for(profile_name: str):
                 group_name=PysuiConfiguration.SUI_GRPC_GROUP, profile_name=profile_name
             )
         )
-        prtcl_cfg = await client.protocol()
-        if client:
-            client.close()
-        return f"{profile_name} protocol version = {prtcl_cfg.transaction_constraints.protocol_version}"
+        qres = await client.execute(command=GetProtocolConfig())
+        if qres.is_ok():
+            prtcl_cfg = qres.result_data
+            return f"{profile_name} protocol version = {prtcl_cfg.protocol_version}"
     except ValueError as ve:
         ve_s = ve.args
         return f"{profile_name} protocol version = {ve_s[0]}"
     finally:
-        pass
+        if client:
+            await client.close()
 
 
 async def main():
