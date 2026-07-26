@@ -21,7 +21,8 @@ _GQL_DEFAULTS: dict = {
 }
 
 _CONFIG_VERSION_100: str = "1.0.0"
-_CURRENT_CONFIG_VERSION: str = "1.1.0"
+_CONFIG_VERSION_110: str = "1.1.0"
+_CURRENT_CONFIG_VERSION: str = "1.2.0"
 
 
 @dataclasses.dataclass
@@ -70,6 +71,16 @@ class PysuiConfigModel(dataclasses_json.DataClassJsonMixin):
                     g.protocol = prfgrp.GroupProtocol.GRPC
                 else:
                     g.protocol = prfgrp.GroupProtocol.OTHER
+        # If prior was 1.0.0 or 1.1.0, 1.2.0 brings network_type indicator
+        # on profiles; backfill known public network profiles by URL match
+        if self.version in (_CONFIG_VERSION_100, _CONFIG_VERSION_110):
+            for g in self.groups:
+                for p in g.profiles:
+                    if p.network_type is None:
+                        _known = prfgrp.WELL_KNOWN_NETWORK_TYPES.get(p.url)
+                        if _known is not None:
+                            p.network_type = _known
+                            change_made = True
         return change_made
 
     @property

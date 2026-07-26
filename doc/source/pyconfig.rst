@@ -183,7 +183,13 @@ Profile
 -------
 A Profile is the equivalent of what sui CLI calls 'env' (a.k.a. environment).
 It encapsulate a unique name and relevant url information such as the primary
-endpoint, faucet and faucet status urls.
+endpoint, faucet and faucet status urls. It also carries a ``network_type``
+(``NetworkType``) indicator -- ``LOCAL``, ``DEVELOPER``, ``TEST``, or
+``PRODUCTION`` -- that explicitly identifies the kind of network the profile
+connects to, independent of the (user-renamable) ``profile_name``/
+``group_name`` strings. It is required when creating a profile via
+``new_profile`` or a ``new_group`` profile block, and optional when updating
+an existing profile via ``update_profile``.
 
 **WARNING** All methods support an optional ``persist`` flag argument. Keep in
 mind that this will persist *any* changes that may have occured previouos where
@@ -205,6 +211,7 @@ profile (with profile_name) *does* exist.
         *,
         profile_name: str,
         url: str,
+        network_type: NetworkType,
         faucet_url: Optional[str] = None,
         faucet_status_url: Optional[str] = None,
         make_active: Optional[bool] = False,
@@ -229,6 +236,7 @@ Will raise an exception if the explicit group or the profile
         url: Optional[str] = None,
         faucet_url: Optional[str] = None,
         faucet_status_url: Optional[str] = None,
+        network_type: Optional[NetworkType] = None,
         in_group: Optional[str] = None,
         persist: Optional[bool] = True,
     ):
@@ -337,6 +345,7 @@ The following is an example of creating a fictional group:
             {
                 "profile_name": "dev_only",
                 "url": "https://dev.fictional.com",
+                "network_type": NetworkType.DEVELOPER,
                 "faucet_url": None,
                 "faucet_status_url": None,
                 "make_active": False,
@@ -344,6 +353,7 @@ The following is an example of creating a fictional group:
             {
                 "profile_name": "test_only",
                 "url": "https://test.fictional.com",
+                "network_type": NetworkType.TEST,
                 "faucet_url": None,
                 "faucet_status_url": None,
                 "make_active": True,

@@ -18,6 +18,7 @@ from pysui import PysuiConfiguration
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_common.config.confgroup import (
     GroupProtocol,
+    NetworkType,
     ProfileGroup,
     Profile,
     ProfileAlias,
@@ -27,6 +28,7 @@ from pysui.sui.sui_common.config.confgroup import (
     SUI_JSON_RPC_GROUP,
     SUI_USER_GROUP,
 )
+from pysui.sui.sui_common.config.confmodel import PysuiConfigModel
 import pysui.sui.sui_crypto as crypto
 
 
@@ -86,6 +88,7 @@ def cfg_dir(tmp_path):
     cfg.new_profile(
         profile_name="testnet",
         url="https://graphql.testnet.sui.io/graphql",
+        network_type=NetworkType.TEST,
         make_active=True,
         persist=True,
     )
@@ -293,6 +296,31 @@ class TestProfileGroupProfiles:
 
 
 # ---------------------------------------------------------------------------
+# Profile — network_type field
+# ---------------------------------------------------------------------------
+
+
+class TestProfileNetworkType:
+    def test_network_type_defaults_to_none(self):
+        prf = Profile("testnet", "https://example.com")
+        assert prf.network_type is None
+
+    def test_network_type_can_be_set(self):
+        prf = Profile("testnet", "https://example.com", network_type=NetworkType.TEST)
+        assert prf.network_type == NetworkType.TEST
+
+    def test_network_type_json_round_trip(self):
+        prf = Profile("mainnet", "https://example.com", network_type=NetworkType.PRODUCTION)
+        restored = Profile.from_json(prf.to_json())
+        assert restored.network_type == NetworkType.PRODUCTION
+
+    def test_network_type_json_round_trip_default_none(self):
+        prf = Profile("devnet", "https://example.com")
+        restored = Profile.from_json(prf.to_json())
+        assert restored.network_type is None
+
+
+# ---------------------------------------------------------------------------
 # ProfileGroup — keypair operations
 # ---------------------------------------------------------------------------
 
@@ -370,6 +398,79 @@ class TestProfileGroupKeypairs:
 
 
 # ---------------------------------------------------------------------------
+# PysuiConfigModel — network_type backfill on migration
+# ---------------------------------------------------------------------------
+
+
+class TestNetworkTypeBackfill:
+    def test_update_model_backfills_known_url(self):
+        group = ProfileGroup(
+            SUI_GQL_RPC_GROUP,
+            "testnet",
+            "",
+            [],
+            [],
+            [],
+            [Profile("testnet", "https://graphql.testnet.sui.io/graphql")],
+        )
+        model = PysuiConfigModel(version="1.1.0", groups=[group])
+        model.update_model(SUI_GQL_RPC_GROUP, SUI_GRPC_GROUP)
+        assert group.profiles[0].network_type == NetworkType.TEST
+
+    def test_update_model_leaves_unknown_url_none(self):
+        group = ProfileGroup(
+            "custom_group",
+            "custom",
+            "",
+            [],
+            [],
+            [],
+            [Profile("custom", "https://custom.example.com")],
+        )
+        model = PysuiConfigModel(version="1.1.0", groups=[group])
+        model.update_model(SUI_GQL_RPC_GROUP, SUI_GRPC_GROUP)
+        assert group.profiles[0].network_type is None
+
+    def test_update_model_does_not_overwrite_existing_network_type(self):
+        group = ProfileGroup(
+            SUI_GQL_RPC_GROUP,
+            "testnet",
+            "",
+            [],
+            [],
+            [],
+            [
+                Profile(
+                    "testnet",
+                    "https://graphql.testnet.sui.io/graphql",
+                    network_type=NetworkType.PRODUCTION,
+                )
+            ],
+        )
+        model = PysuiConfigModel(version="1.1.0", groups=[group])
+        model.update_model(SUI_GQL_RPC_GROUP, SUI_GRPC_GROUP)
+        assert group.profiles[0].network_type == NetworkType.PRODUCTION
+
+    def test_update_model_backfills_grpc_and_archive_urls(self):
+        group = ProfileGroup(
+            SUI_GRPC_GROUP,
+            "mainnet",
+            "",
+            [],
+            [],
+            [],
+            [
+                Profile("mainnet", "fullnode.mainnet.sui.io:443"),
+                Profile("main-arch", "archive.mainnet.sui.io:443"),
+            ],
+        )
+        model = PysuiConfigModel(version="1.0.0", groups=[group])
+        model.update_model(SUI_GQL_RPC_GROUP, SUI_GRPC_GROUP)
+        assert group.profiles[0].network_type == NetworkType.PRODUCTION
+        assert group.profiles[1].network_type == NetworkType.PRODUCTION
+
+
+# ---------------------------------------------------------------------------
 # PysuiConfiguration — initialization
 # ---------------------------------------------------------------------------
 
@@ -428,7 +529,7 @@ class TestPysuiConfigurationInit:
         assert cfg.config_actives == expected
 
     def test_version_migration_saves_updated_version(self, tmp_path):
-        """Loading a v1.0.0 config file upgrades version to 1.1.0 and persists the change."""
+        """Loading a v1.0.0 config file upgrades version to 1.2.0 and persists the change."""
         PysuiConfiguration.initialize_config(
             in_folder=tmp_path,
             init_groups=[{"name": SUI_GQL_RPC_GROUP, "make_active": True}],
@@ -440,9 +541,9 @@ class TestPysuiConfigurationInit:
 
         cfg2 = PysuiConfiguration(from_cfg_path=str(tmp_path))
 
-        assert cfg2.model.version == "1.1.0"
+        assert cfg2.model.version == "1.2.0"
         saved = json.loads(config_file.read_text())
-        assert saved["version"] == "1.1.0"
+        assert saved["version"] == "1.2.0"
 
 
 # ---------------------------------------------------------------------------
@@ -456,6 +557,7 @@ class TestMakeActive:
         cfg.new_profile(
             profile_name="mainnet",
             url="https://graphql.mainnet.sui.io/graphql",
+            network_type=NetworkType.PRODUCTION,
             persist=False,
         )
         cfg.make_active(profile_name="mainnet", persist=False)
@@ -507,7 +609,13 @@ class TestGroupAndProfileManagement:
         _, cfg = cfg_dir
         cfg.new_group(
             group_name="second_group",
-            profile_block=[{"profile_name": "devnet", "url": "https://example.com"}],
+            profile_block=[
+                {
+                    "profile_name": "devnet",
+                    "url": "https://example.com",
+                    "network_type": NetworkType.DEVELOPER,
+                }
+            ],
             key_block=[{"key_string": _gen_key_string()}],
             active_address_index=0,
             group_protocol=GroupProtocol.GRPC,
@@ -526,7 +634,13 @@ class TestGroupAndProfileManagement:
         _, cfg = cfg_dir
         addies = cfg.new_group(
             group_name="extra_group",
-            profile_block=[{"profile_name": "testnet", "url": "https://example.com"}],
+            profile_block=[
+                {
+                    "profile_name": "testnet",
+                    "url": "https://example.com",
+                    "network_type": NetworkType.TEST,
+                }
+            ],
             key_block=[{"key_string": _gen_key_string()}],
             active_address_index=0,
             group_protocol=GroupProtocol.GRPC,
@@ -550,15 +664,39 @@ class TestGroupAndProfileManagement:
     def test_new_profile_adds_profile(self, cfg_dir):
         _, cfg = cfg_dir
         cfg.new_profile(
-            profile_name="devnet", url="https://example.com/dev", persist=False
+            profile_name="devnet",
+            url="https://example.com/dev",
+            network_type=NetworkType.DEVELOPER,
+            persist=False,
         )
         assert "devnet" in cfg.profile_names()
+
+    def test_new_profile_missing_network_type_raises(self, cfg_dir):
+        _, cfg = cfg_dir
+        with pytest.raises(TypeError):
+            cfg.new_profile(
+                profile_name="devnet", url="https://example.com/dev", persist=False
+            )
+
+    def test_new_profile_sets_network_type(self, cfg_dir):
+        _, cfg = cfg_dir
+        cfg.new_profile(
+            profile_name="mainnet",
+            url="https://example.com/main",
+            network_type=NetworkType.PRODUCTION,
+            persist=False,
+        )
+        prf = cfg.active_group.get_profile("mainnet")
+        assert prf.network_type == NetworkType.PRODUCTION
 
     def test_new_profile_duplicate_raises(self, cfg_dir):
         _, cfg = cfg_dir
         with pytest.raises(ValueError, match="already exists"):
             cfg.new_profile(
-                profile_name="testnet", url="https://example.com", persist=False
+                profile_name="testnet",
+                url="https://example.com",
+                network_type=NetworkType.TEST,
+                persist=False,
             )
 
     def test_update_profile_url(self, cfg_dir):
@@ -573,6 +711,7 @@ class TestGroupAndProfileManagement:
         cfg.new_profile(
             profile_name="devnet",
             url="https://example.com/devnet",
+            network_type=NetworkType.DEVELOPER,
             faucet_url="https://faucet.example.com",
             persist=False,
         )
@@ -584,11 +723,31 @@ class TestGroupAndProfileManagement:
         prf = cfg.active_group.get_profile("devnet")
         assert prf.faucet_url == "https://faucet.example.com"
 
+    def test_update_profile_sets_network_type(self, cfg_dir):
+        _, cfg = cfg_dir
+        cfg.update_profile(
+            profile_name="testnet", network_type=NetworkType.TEST, persist=False
+        )
+        prf = cfg.active_group.get_profile("testnet")
+        assert prf.network_type == NetworkType.TEST
+
+    def test_update_profile_preserves_network_type_when_not_passed(self, cfg_dir):
+        _, cfg = cfg_dir
+        cfg.update_profile(
+            profile_name="testnet", network_type=NetworkType.TEST, persist=False
+        )
+        cfg.update_profile(
+            profile_name="testnet", url="https://updated.example.com", persist=False
+        )
+        prf = cfg.active_group.get_profile("testnet")
+        assert prf.network_type == NetworkType.TEST
+
     def test_update_profile_updates_faucet_url(self, cfg_dir):
         _, cfg = cfg_dir
         cfg.new_profile(
             profile_name="devnet",
             url="https://example.com/devnet",
+            network_type=NetworkType.DEVELOPER,
             faucet_url="https://old-faucet.com",
             persist=False,
         )
@@ -604,7 +763,13 @@ class TestGroupAndProfileManagement:
         _, cfg = cfg_dir
         cfg.new_group(
             group_name="active_group",
-            profile_block=[{"profile_name": "testnet", "url": "https://example.com"}],
+            profile_block=[
+                {
+                    "profile_name": "testnet",
+                    "url": "https://example.com",
+                    "network_type": NetworkType.TEST,
+                }
+            ],
             key_block=[{"key_string": _gen_key_string()}],
             active_address_index=0,
             group_protocol=GroupProtocol.GRPC,
@@ -673,7 +838,13 @@ class TestKeypairManagement:
         key_str = _gen_key_string()
         addies = cfg.new_group(
             group_name="second_group",
-            profile_block=[{"profile_name": "testnet", "url": "https://example.com"}],
+            profile_block=[
+                {
+                    "profile_name": "testnet",
+                    "url": "https://example.com",
+                    "network_type": NetworkType.TEST,
+                }
+            ],
             key_block=[{"key_string": key_str}],
             active_address_index=0,
             group_protocol=GroupProtocol.GRPC,
