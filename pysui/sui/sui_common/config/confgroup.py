@@ -38,7 +38,7 @@ class NetworkType(IntEnum):
     """Network environment indicator for a connection profile."""
 
     LOCAL = 1
-    DEVELOPER = 2
+    DEVELOP = 2
     TEST = 3
     PRODUCTION = 4
 
@@ -46,7 +46,7 @@ class NetworkType(IntEnum):
         """Return display name for this network type."""
         if self == NetworkType.LOCAL:
             return "local"
-        if self == NetworkType.DEVELOPER:
+        if self == NetworkType.DEVELOP:
             return "developer"
         if self == NetworkType.TEST:
             return "test"
@@ -54,10 +54,10 @@ class NetworkType(IntEnum):
 
 
 WELL_KNOWN_NETWORK_TYPES: dict[str, NetworkType] = {
-    "https://graphql.devnet.sui.io/graphql": NetworkType.DEVELOPER,
+    "https://graphql.devnet.sui.io/graphql": NetworkType.DEVELOP,
     "https://graphql.testnet.sui.io/graphql": NetworkType.TEST,
     "https://graphql.mainnet.sui.io/graphql": NetworkType.PRODUCTION,
-    "fullnode.devnet.sui.io:443": NetworkType.DEVELOPER,
+    "fullnode.devnet.sui.io:443": NetworkType.DEVELOP,
     "fullnode.testnet.sui.io:443": NetworkType.TEST,
     "fullnode.mainnet.sui.io:443": NetworkType.PRODUCTION,
     "archive.testnet.sui.io:443": NetworkType.TEST,

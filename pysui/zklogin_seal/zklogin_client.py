@@ -221,6 +221,11 @@ class ZkClient:
         """
         if not _CRYPTO_AVAILABLE:
             raise ImportError(INSTALL_HINT)
+        if not config.active_group.zklogin_providers:
+            raise ValueError(
+                f"No zkLogin providers configured for group '{config.active_group.group_name}'. "
+                "Add providers via ZkSealConfig.add_provider()"
+            )
         self._config = config
         self._salt = salt if salt is not None else generate_user_salt()
 

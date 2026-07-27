@@ -12,6 +12,7 @@ from typing import Optional
 import dataclasses_json
 
 from pysui import AsyncClientBase, GetDynamicFields
+from pysui.sui.sui_common.config.confgroup import NetworkType
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -81,6 +82,8 @@ class ZkSealNetworkGroup:
 
     :param group_name: The network identifier (e.g. "devnet", "testnet", "mainnet")
     :type group_name: str
+    :param network_type: The Sui network type for this group
+    :type network_type: Optional[NetworkType], optional
     :param zklogin_providers: zkLogin OAuth providers for this network, defaults to empty list
     :type zklogin_providers: list[ZkLoginProvider], optional
     :param key_server_sets: SEAL key server sets for this network, defaults to empty list
@@ -88,11 +91,12 @@ class ZkSealNetworkGroup:
     """
 
     group_name: str
+    network_type: Optional[NetworkType] = None
     zklogin_providers: list[ZkLoginProvider] = dataclasses.field(default_factory=list)
     key_server_sets: list[SealKeyServerSet] = dataclasses.field(default_factory=list)
 
 
-_CURRENT_ZKSEAL_CONFIG_VERSION: int = 2
+_CURRENT_ZKSEAL_CONFIG_VERSION: int = 3
 """Current ZkSealConfig schema version; bump when adding persisted fields."""
 
 
@@ -148,6 +152,8 @@ class ZkSealConfig:
         self._migrate_if_needed()
         self._active_group: Optional[ZkSealNetworkGroup] = None
         self.make_active(group_name=group_name, persist=persist)
+        if self.active_group.network_type is None:
+            raise ValueError(f"Network group '{self.active_group.group_name}' has no network_type set")
 
     @staticmethod
     def default_path() -> pathlib.Path:
@@ -175,6 +181,7 @@ class ZkSealConfig:
             groups=[
                 ZkSealNetworkGroup(
                     group_name="devnet",
+                    network_type=NetworkType.DEVELOP,
                     zklogin_providers=[
                         ZkLoginProvider(name="google", iss="https://accounts.google.com", prover_url="https://prover-dev.mystenlabs.com/v1"),
                         ZkLoginProvider(name="facebook", iss="https://www.facebook.com", prover_url="https://prover-dev.mystenlabs.com/v1"),
@@ -184,6 +191,7 @@ class ZkSealConfig:
                 ),
                 ZkSealNetworkGroup(
                     group_name="testnet",
+                    network_type=NetworkType.TEST,
                     zklogin_providers=[
                         ZkLoginProvider(name="google", iss="https://accounts.google.com", prover_url="https://prover-dev.mystenlabs.com/v1"),
                         ZkLoginProvider(name="facebook", iss="https://www.facebook.com", prover_url="https://prover-dev.mystenlabs.com/v1"),
@@ -223,6 +231,7 @@ class ZkSealConfig:
                 ),
                 ZkSealNetworkGroup(
                     group_name="mainnet",
+                    network_type=NetworkType.PRODUCTION,
                     zklogin_providers=[
                         ZkLoginProvider(name="google", iss="https://accounts.google.com", prover_url="https://prover.mystenlabs.com/v1"),
                         ZkLoginProvider(name="facebook", iss="https://www.facebook.com", prover_url="https://prover.mystenlabs.com/v1"),
@@ -238,6 +247,14 @@ class ZkSealConfig:
     def _migrate_if_needed(self) -> None:
         """Bump ZkSealConfig schema version and persist if a backlevel config was loaded."""
         if self._model.version < _CURRENT_ZKSEAL_CONFIG_VERSION:
+            well_known_network_types = {
+                "devnet": NetworkType.DEVELOP,
+                "testnet": NetworkType.TEST,
+                "mainnet": NetworkType.PRODUCTION,
+            }
+            for group in self._model.groups:
+                if group.network_type is None and group.group_name in well_known_network_types:
+                    group.network_type = well_known_network_types[group.group_name]
             self._model.version = _CURRENT_ZKSEAL_CONFIG_VERSION
             self.save()
 
@@ -302,20 +319,26 @@ class ZkSealConfig:
 
     # --- Group CRUD ---
 
-    def add_group(self, *, group_name: str, persist: bool = False) -> ZkSealNetworkGroup:
+    def add_group(
+        self, *, group_name: str, network_type: NetworkType, persist: bool = False
+    ) -> ZkSealNetworkGroup:
         """Add a new empty network group.
 
         :param group_name: Identifier for the new group
         :type group_name: str
+        :param network_type: The Sui network type for this group
+        :type network_type: NetworkType
         :param persist: Save the configuration after adding, defaults to False
         :type persist: bool, optional
         :return: The newly created ZkSealNetworkGroup
         :rtype: ZkSealNetworkGroup
-        :raises ValueError: If a group with this name already exists
+        :raises ValueError: If a group with this name already exists or network_type is invalid
         """
+        if network_type is None or not isinstance(network_type, NetworkType):
+            raise ValueError(f"'{network_type}' is not a valid NetworkType")
         if any(g.group_name == group_name for g in self._model.groups):
             raise ValueError(f"Group '{group_name}' already exists")
-        group = ZkSealNetworkGroup(group_name=group_name)
+        group = ZkSealNetworkGroup(group_name=group_name, network_type=network_type)
         self._model.groups.append(group)
         if persist:
             self.save()

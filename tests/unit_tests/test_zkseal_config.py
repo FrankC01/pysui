@@ -20,6 +20,7 @@ from pysui.zklogin_seal.config import (
     _ZkSealConfigModel,
     _CURRENT_ZKSEAL_CONFIG_VERSION,
 )
+from pysui.sui.sui_common.config.confgroup import NetworkType
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +198,7 @@ class TestDataclassSerialization:
     def test_model_version_field(self):
         m = _ZkSealConfigModel()
         d = json.loads(m.to_json())
-        assert d["version"] == 2
+        assert d["version"] == 3
 
     def test_model_roundtrip_with_groups(self):
         m = _ZkSealConfigModel(groups=[ZkSealNetworkGroup(group_name="devnet")])
@@ -278,7 +279,7 @@ class TestInitializeConfig:
     def test_version_is_1(self, tmp_path):
         ZkSealConfig._initialize_config(from_cfg_path=str(tmp_path))
         data = json.loads((tmp_path / "ZkSealConfig.json").read_text())
-        assert data["version"] == 2
+        assert data["version"] == 3
 
     def test_json_uses_camelcase_keys(self, tmp_path):
         ZkSealConfig._initialize_config(from_cfg_path=str(tmp_path))
@@ -336,7 +337,7 @@ class TestSave:
 
     def test_save_writes_to_config_file(self, tmp_path):
         cfg = _init_cfg(tmp_path)
-        cfg.add_group(group_name="stagenet")
+        cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST)
         cfg.save()
         data = json.loads((tmp_path / "ZkSealConfig.json").read_text())
         assert any(g["groupName"] == "stagenet" for g in data["groups"])
@@ -435,36 +436,36 @@ class TestGroupCrud:
 
     def test_add_group_returns_group(self, tmp_path):
         cfg = _init_cfg(tmp_path)
-        g = cfg.add_group(group_name="stagenet")
+        g = cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST)
         assert isinstance(g, ZkSealNetworkGroup)
         assert g.group_name == "stagenet"
 
     def test_add_group_appends_to_model(self, tmp_path):
         cfg = _init_cfg(tmp_path)
-        cfg.add_group(group_name="stagenet")
+        cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST)
         assert any(g.group_name == "stagenet" for g in cfg._model.groups)
 
     def test_add_group_starts_empty(self, tmp_path):
         cfg = _init_cfg(tmp_path)
-        g = cfg.add_group(group_name="stagenet")
+        g = cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST)
         assert g.zklogin_providers == []
         assert g.key_server_sets == []
 
     def test_add_group_duplicate_raises(self, tmp_path):
         cfg = _init_cfg(tmp_path)
         with pytest.raises(ValueError, match="already exists"):
-            cfg.add_group(group_name="devnet")
+            cfg.add_group(group_name="devnet", network_type=NetworkType.TEST)
 
     def test_add_group_persist_false_no_save(self, tmp_path):
         cfg = _init_cfg(tmp_path)
         with patch.object(cfg, "save") as mock_save:
-            cfg.add_group(group_name="stagenet", persist=False)
+            cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST, persist=False)
             mock_save.assert_not_called()
 
     def test_add_group_persist_true_saves(self, tmp_path):
         cfg = _init_cfg(tmp_path)
         with patch.object(cfg, "save") as mock_save:
-            cfg.add_group(group_name="stagenet", persist=True)
+            cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST, persist=True)
             mock_save.assert_called_once()
 
     def test_remove_group_removes_it(self, tmp_path):
@@ -515,7 +516,7 @@ class TestProviderCrud:
 
     def test_add_provider(self, tmp_path):
         cfg = _init_cfg(tmp_path)
-        cfg.add_group(group_name="stagenet")
+        cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST)
         cfg.add_provider(
             group_name="stagenet", name="apple",
             iss="https://appleid.apple.com", prover_url=_PROVER_DEV
@@ -525,7 +526,7 @@ class TestProviderCrud:
 
     def test_add_provider_stores_correct_fields(self, tmp_path):
         cfg = _init_cfg(tmp_path)
-        cfg.add_group(group_name="stagenet")
+        cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST)
         cfg.add_provider(
             group_name="stagenet", name="apple",
             iss="https://appleid.apple.com", prover_url=_PROVER_DEV
@@ -546,7 +547,7 @@ class TestProviderCrud:
 
     def test_add_provider_persist_false_no_save(self, tmp_path):
         cfg = _init_cfg(tmp_path)
-        cfg.add_group(group_name="stagenet")
+        cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST)
         with patch.object(cfg, "save") as mock_save:
             cfg.add_provider(
                 group_name="stagenet", name="apple",
@@ -1205,7 +1206,7 @@ class TestRoundTrip:
 
     def test_add_group_save_reload(self, tmp_path):
         cfg = _init_cfg(tmp_path)
-        cfg.add_group(group_name="stagenet")
+        cfg.add_group(group_name="stagenet", network_type=NetworkType.TEST)
         cfg.save()
         cfg2 = ZkSealConfig(from_cfg_path=str(tmp_path))
         assert any(g.group_name == "stagenet" for g in cfg2._model.groups)

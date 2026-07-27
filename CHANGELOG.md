@@ -9,11 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added network_type to PysuiConfiguration profile declarations
+
 ### Fixed
 
 ### Changed
 
-- Updated PysuiConfiguration to include network_type
+- Updated ZkSealConfig to include network_type
+- SealClient to gate on network_type match with PysuiConfiguration profile network_type and avaliable key_server_sets
+- ZkClient to gate on availabel zklogin_providers
 
 ### Removed
 

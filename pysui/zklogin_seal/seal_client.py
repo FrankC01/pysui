@@ -4,6 +4,7 @@
 # -*- coding: utf-8 -*-
 
 """SEAL key server client for encrypting and decrypting data."""
+
 from __future__ import annotations
 from typing import Optional
 
@@ -32,10 +33,14 @@ def _uleb128(n: int) -> bytes:
     return bytes(result)
 
 
-def _signed_request_bytes(ptb_bcs: bytes, enc_key_raw: bytes, enc_vk_raw: bytes) -> bytes:
+def _signed_request_bytes(
+    ptb_bcs: bytes, enc_key_raw: bytes, enc_vk_raw: bytes
+) -> bytes:
     """BCS of RequestFormat {ptb: Vec<u8>, enc_key: Vec<u8>, enc_vk: Vec<u8>}."""
+
     def bcs_vec(data: bytes) -> bytes:
         return _uleb128(len(data)) + data
+
     return bcs_vec(ptb_bcs) + bcs_vec(enc_key_raw) + bcs_vec(enc_vk_raw)
 
 
@@ -43,8 +48,12 @@ class SealClient:
     """SEAL key server client for IBE-based encryption and threshold decryption."""
 
     def __init__(self, *, client: AsyncClientBase, config: ZkSealConfig) -> None:
-        if config.active_group.group_name == "devnet":
-            raise ValueError("SEAL is not supported on devnet")
+        profile_network_type = client.config.active_group.active_profile.network_type
+        if config.active_group.network_type != profile_network_type:
+            raise ValueError(
+                f"ZkSealConfig active group network_type '{config.active_group.network_type}' "
+                f"does not match PysuiConfiguration active profile network_type '{profile_network_type}'"
+            )
         if not config.active_group.key_server_sets:
             raise ValueError(
                 f"No SEAL key servers configured for group '{config.active_group.group_name}'. "
@@ -89,7 +98,9 @@ class SealClient:
 
     async def _fetch_ibe_pk(self, server: SealKeyServer) -> bytes:
         """Fetch IBE public key (G2, 96 raw bytes) from on-chain dynamic fields."""
-        result = await self._client.execute(command=GetDynamicFields(object_id=server.object_id))
+        result = await self._client.execute(
+            command=GetDynamicFields(object_id=server.object_id)
+        )
         if not result.is_ok():
             raise ValueError(
                 f"Failed to fetch dynamic fields for {server.object_id}: {result.result_string}"
@@ -100,7 +111,9 @@ class SealClient:
             value = df.field_object.json.to_dict().get("value", {})
             if isinstance(value, dict) and "pk" in value:
                 return base64.b64decode(value["pk"])
-        raise ValueError(f"IBE public key not found in dynamic fields for {server.object_id}")
+        raise ValueError(
+            f"IBE public key not found in dynamic fields for {server.object_id}"
+        )
 
     def _build_fetch_key_request(
         self,
@@ -112,7 +125,9 @@ class SealClient:
         enc_key_b64 = base64.b64encode(credentials.elgamal_pk).decode()
         enc_vk_b64 = base64.b64encode(credentials.elgamal_vk).decode()
 
-        sr_bytes = _signed_request_bytes(ptb_bcs, credentials.elgamal_pk, credentials.elgamal_vk)
+        sr_bytes = _signed_request_bytes(
+            ptb_bcs, credentials.elgamal_pk, credentials.elgamal_vk
+        )
         request_sig_b64 = base64.b64encode(credentials.sign_request(sr_bytes)).decode()
 
         msg_str = credentials.signed_message(
@@ -200,7 +215,9 @@ class SealClient:
         except Exception as exc:
             return SuiRpcResult(False, str(exc), None)
 
-        return SuiRpcResult(True, "", (SealEncryptedObject.from_bytes(encrypted_bytes), dem_key))
+        return SuiRpcResult(
+            True, "", (SealEncryptedObject.from_bytes(encrypted_bytes), dem_key)
+        )
 
     async def decrypt(
         self,
@@ -227,7 +244,9 @@ class SealClient:
             return SuiRpcResult(False, f"Failed to parse encrypted object: {exc}", None)
 
         package_id_str = "0x" + eo_package_id_bytes.hex()
-        ptb_bcs = transaction_kind[1:]  # strip 1-byte TransactionKind discriminant; caller must pass raw_kind().serialize() output
+        ptb_bcs = transaction_kind[
+            1:
+        ]  # strip 1-byte TransactionKind discriminant; caller must pass raw_kind().serialize() output
 
         user_secret_keys: list[tuple[bytes, bytes]] = []
         server_ibe_pks: list[bytes] = []
@@ -246,7 +265,9 @@ class SealClient:
                 except ValueError as exc:
                     return SuiRpcResult(False, str(exc), None)
 
-                request_body = self._build_fetch_key_request(credentials, ptb_bcs, package_id_str)
+                request_body = self._build_fetch_key_request(
+                    credentials, ptb_bcs, package_id_str
+                )
 
                 headers = {
                     "Client-Sdk-Version": "1.1.0",
@@ -277,13 +298,19 @@ class SealClient:
                 decryption_keys = response_json.get("decryption_keys", [])
                 if not decryption_keys:
                     return SuiRpcResult(
-                        False, f"No decryption keys in response from '{srv.alias}'", None
+                        False,
+                        f"No decryption keys in response from '{srv.alias}'",
+                        None,
                     )
 
                 verified = False
                 for dk in decryption_keys:
                     raw_id = dk["id"]
-                    full_id = bytes(raw_id) if isinstance(raw_id, list) else base64.b64decode(raw_id)
+                    full_id = (
+                        bytes(raw_id)
+                        if isinstance(raw_id, list)
+                        else base64.b64decode(raw_id)
+                    )
                     raw_ek = dk["encrypted_key"]
                     if isinstance(raw_ek, list):
                         encrypted_share = b"".join(base64.b64decode(s) for s in raw_ek)

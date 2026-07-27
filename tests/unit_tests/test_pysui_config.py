@@ -613,7 +613,7 @@ class TestGroupAndProfileManagement:
                 {
                     "profile_name": "devnet",
                     "url": "https://example.com",
-                    "network_type": NetworkType.DEVELOPER,
+                    "network_type": NetworkType.DEVELOP,
                 }
             ],
             key_block=[{"key_string": _gen_key_string()}],
@@ -666,7 +666,7 @@ class TestGroupAndProfileManagement:
         cfg.new_profile(
             profile_name="devnet",
             url="https://example.com/dev",
-            network_type=NetworkType.DEVELOPER,
+            network_type=NetworkType.DEVELOP,
             persist=False,
         )
         assert "devnet" in cfg.profile_names()
@@ -711,7 +711,7 @@ class TestGroupAndProfileManagement:
         cfg.new_profile(
             profile_name="devnet",
             url="https://example.com/devnet",
-            network_type=NetworkType.DEVELOPER,
+            network_type=NetworkType.DEVELOP,
             faucet_url="https://faucet.example.com",
             persist=False,
         )
@@ -747,7 +747,7 @@ class TestGroupAndProfileManagement:
         cfg.new_profile(
             profile_name="devnet",
             url="https://example.com/devnet",
-            network_type=NetworkType.DEVELOPER,
+            network_type=NetworkType.DEVELOP,
             faucet_url="https://old-faucet.com",
             persist=False,
         )
