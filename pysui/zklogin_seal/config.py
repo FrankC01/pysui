@@ -237,7 +237,15 @@ class ZkSealConfig:
                         ZkLoginProvider(name="facebook", iss="https://www.facebook.com", prover_url="https://prover.mystenlabs.com/v1"),
                         ZkLoginProvider(name="twitch", iss="https://id.twitch.tv/oauth2", prover_url="https://prover.mystenlabs.com/v1"),
                     ],
-                    key_server_sets=[],
+                    key_server_sets=[
+                        SealKeyServerSet(
+                            name="mysten-mainnet-committee",
+                            is_committee=True,
+                            servers=[
+                                SealKeyServer(alias="mysten-committee", object_id="0x686098f1439237fff9f36b99c7329683c22979d2005c2465cb891acb012a7595", url="https://seal-aggregator-mainnet.mystenlabs.com"),
+                            ],
+                        ),
+                    ],
                 ),
             ]
         )
@@ -255,6 +263,22 @@ class ZkSealConfig:
             for group in self._model.groups:
                 if group.network_type is None and group.group_name in well_known_network_types:
                     group.network_type = well_known_network_types[group.group_name]
+                if group.group_name == "mainnet" and not any(
+                    s.name == "mysten-mainnet-committee" for s in group.key_server_sets
+                ):
+                    group.key_server_sets.append(
+                        SealKeyServerSet(
+                            name="mysten-mainnet-committee",
+                            is_committee=True,
+                            servers=[
+                                SealKeyServer(
+                                    alias="mysten-committee",
+                                    object_id="0x686098f1439237fff9f36b99c7329683c22979d2005c2465cb891acb012a7595",
+                                    url="https://seal-aggregator-mainnet.mystenlabs.com",
+                                ),
+                            ],
+                        )
+                    )
             self._model.version = _CURRENT_ZKSEAL_CONFIG_VERSION
             self.save()
 
