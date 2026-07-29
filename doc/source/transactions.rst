@@ -122,6 +122,37 @@ All three build methods accept:
    may be combined freely.
 
 
+Gasless Stablecoin Transfers
+-----------------------------
+
+.. note::
+
+   pysui's support for gasless stablecoin transfers is considered **BETA**.
+
+Gasless stablecoin transfers allow certain transactions to be executed without
+a gas budget when the transaction exclusively involves transfers of
+whitelisted stablecoins. This feature is currently supported only when using
+the gRPC transport protocol; it is not yet available with the GraphQL protocol.
+
+pysui automatically detects whether your transaction is eligible for the
+gasless path by analyzing the PTB commands and coin types involved. When a
+transaction meets the eligibility criteria (based on Sui's allowlist of
+supported stablecoins and the specific operations performed), the transaction
+is built as a gas-free transaction ready for execution. In this case, any explicitly
+passed gas-related build arguments — such as ``gas_budget``,
+``use_gas_objects``, ``use_account_for_gas``, or ``auto_gas`` — are
+**ignored** in favor of the automatic gasless path.
+
+If the transaction does not meet the eligibility criteria, pysui falls back to
+standard gas handling, and all gas-related build arguments (``gas_budget``,
+``use_gas_objects``, ``use_account_for_gas``, ``auto_gas``) are honored as
+normal.
+
+For the full protocol-level specification of gasless transactions and the
+current list of supported stablecoin types, refer to `Sui's official
+documentation <https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers>`_.
+
+
 Transaction JSON Interchange
 ----------------------------
 

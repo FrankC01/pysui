@@ -7,7 +7,9 @@
 
 import functools
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Optional
+
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 
 class AsyncClientBase(ABC):
@@ -20,6 +22,8 @@ class AsyncClientBase(ABC):
     """
 
     _protocol: ClassVar[str] = ""
+    _protocol_config: Optional[sui_prot.ProtocolConfig] = None
+    """Cached protocol configuration, fetched on first gasless eligibility check."""
 
     @abstractmethod
     async def transaction(self, **kwargs) -> Any:
@@ -174,3 +178,34 @@ class AsyncClientBase(ABC):
                     if sub_result.is_ok():
                         items[i] = sub_result.result_data
         return result
+
+    async def gasless_for(self, *, coin_token: str) -> bool:
+        """Determine whether a coin type is eligible for gasless transactions.
+
+        Fetches and caches the protocol configuration on first use. Returns
+        False when gasless is disabled at the protocol level, when the
+        allowlist is absent from the protocol configuration (the GraphQL
+        protocol does not expose it), or when the coin type is not
+        allowlisted.
+
+        :param coin_token: Canonical Move type string of the coin, for
+            example ``0x...::usdc::USDC``
+        :type coin_token: str
+        :returns: True if the coin type is eligible for gasless transactions
+        :rtype: bool
+        """
+        import pysui.sui.sui_common.sui_commands as cmd
+
+        if self._protocol_config is None:
+            _result = await self.execute(command=cmd.GetProtocolConfig())
+            if not _result.is_ok():
+                raise ValueError(_result.result_string)
+            self._protocol_config = _result.result_data
+        _configs = self._protocol_config.configs
+        _enabled = _configs.get("enable_gasless")
+        if _enabled is None or _enabled.bool_value is not True:
+            return False
+        _allowed = _configs.get("gasless_allowed_token_types")
+        if _allowed is None:
+            return False
+        return coin_token in {_entry[0] for _entry in _allowed.to_dict()}
