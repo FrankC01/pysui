@@ -134,6 +134,11 @@ a gas budget when the transaction exclusively involves transfers of
 whitelisted stablecoins. This feature is currently supported only when using
 the gRPC transport protocol; it is not yet available with the GraphQL protocol.
 
+A single PTB may involve more than one whitelisted stablecoin type — pysui
+does not require all stablecoin transfers within a transaction to share the
+same coin type, only that every stablecoin type involved is on Sui's
+protocol-level allowlist.
+
 pysui automatically detects whether your transaction is eligible for the
 gasless path by analyzing the PTB commands and coin types involved. When a
 transaction meets the eligibility criteria (based on Sui's allowlist of

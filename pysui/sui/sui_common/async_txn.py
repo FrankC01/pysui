@@ -404,11 +404,11 @@ class AsyncSuiTransaction(txbase):
         if not self.builder.commands and not self.builder.inputs:
             raise ValueError("Empty Transaction.")
 
-        _gasless_token = self._inspect_ptb_for_gasless()
+        _gasless_tokens = self._inspect_ptb_for_gasless()
         # PysuiClient is the synchronous surface; the concrete clients also
         # derive AsyncClientBase, where gasless_for is defined.
-        if _gasless_token is not None and await self.client.gasless_for(  # type: ignore[attr-defined]
-            coin_token=_gasless_token
+        if _gasless_tokens is not None and await self.client.gasless_for(  # type: ignore[attr-defined]
+            coin_tokens=_gasless_tokens
         ):
             await self._resolve_deferred_inputs()
             return bcs.TransactionData(

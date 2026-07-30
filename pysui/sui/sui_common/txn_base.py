@@ -335,16 +335,17 @@ class _TransactionBase:
         return uses_gas_coin, gas_source_draw
 
     @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase._inspect_ptb_for_gasless")
-    def _inspect_ptb_for_gasless(self) -> Optional[str]:
+    def _inspect_ptb_for_gasless(self) -> Optional[list[str]]:
         """Inspect the PTB for gasless stablecoin transfer eligibility.
 
         A transaction is structurally eligible when every command is either a
-        coin split/merge or a whitelisted Sui framework move call, and all
-        move calls operate on one single coin type.
+        coin split/merge or a whitelisted Sui framework move call. A PTB may
+        contain move calls across more than one coin type; heterogeneous
+        stablecoins within a single PTB are permitted.
 
-        :returns: The canonical coin type string when structurally eligible,
-            otherwise None
-        :rtype: Optional[str]
+        :returns: The distinct canonical coin type strings found across all
+            move calls when structurally eligible, otherwise None
+        :rtype: Optional[list[str]]
         """
         collected_types: set[str] = set()
 
@@ -390,13 +391,10 @@ class _TransactionBase:
 
             collected_types.add(coin_type_str)
 
-        # Require exactly one coin type across all move calls
         if not collected_types:
             return None
-        if len(collected_types) > 1:
-            return None
 
-        return collected_types.pop()
+        return sorted(collected_types)
 
 
 class FundsSource(IntEnum):

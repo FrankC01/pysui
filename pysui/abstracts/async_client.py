@@ -179,19 +179,20 @@ class AsyncClientBase(ABC):
                         items[i] = sub_result.result_data
         return result
 
-    async def gasless_for(self, *, coin_token: str) -> bool:
-        """Determine whether a coin type is eligible for gasless transactions.
+    async def gasless_for(self, *, coin_tokens: list[str]) -> bool:
+        """Determine whether a set of coin types are eligible for gasless transactions.
 
         Fetches and caches the protocol configuration on first use. Returns
         False when gasless is disabled at the protocol level, when the
         allowlist is absent from the protocol configuration (the GraphQL
-        protocol does not expose it), or when the coin type is not
-        allowlisted.
+        protocol does not expose it), or when any of the coin types is not
+        allowlisted. A PTB may reference more than one stablecoin type; all
+        of them must be allowlisted for the PTB to qualify.
 
-        :param coin_token: Canonical Move type string of the coin, for
+        :param coin_tokens: Canonical Move type strings of the coins, for
             example ``0x...::usdc::USDC``
-        :type coin_token: str
-        :returns: True if the coin type is eligible for gasless transactions
+        :type coin_tokens: list[str]
+        :returns: True if every coin type is eligible for gasless transactions
         :rtype: bool
         """
         import pysui.sui.sui_common.sui_commands as cmd
@@ -208,4 +209,5 @@ class AsyncClientBase(ABC):
         _allowed = _configs.get("gasless_allowed_token_types")
         if _allowed is None:
             return False
-        return coin_token in {_entry[0] for _entry in _allowed.to_dict()}
+        _allowed_types = {_entry[0] for _entry in _allowed.to_dict()}
+        return all(_token in _allowed_types for _token in coin_tokens)
