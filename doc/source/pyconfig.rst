@@ -184,7 +184,7 @@ Profile
 A Profile is the equivalent of what sui CLI calls 'env' (a.k.a. environment).
 It encapsulate a unique name and relevant url information such as the primary
 endpoint, faucet and faucet status urls. It also carries a ``network_type``
-(``NetworkType``) indicator -- ``LOCAL``, ``DEVELOPER``, ``TEST``, or
+(``NetworkType``) indicator -- ``LOCAL``, ``DEVELOP``, ``TEST``, or
 ``PRODUCTION`` -- that explicitly identifies the kind of network the profile
 connects to, independent of the (user-renamable) ``profile_name``/
 ``group_name`` strings. It is required when creating a profile via
@@ -345,7 +345,7 @@ The following is an example of creating a fictional group:
             {
                 "profile_name": "dev_only",
                 "url": "https://dev.fictional.com",
-                "network_type": NetworkType.DEVELOPER,
+                "network_type": NetworkType.DEVELOP,
                 "faucet_url": None,
                 "faucet_status_url": None,
                 "make_active": False,
