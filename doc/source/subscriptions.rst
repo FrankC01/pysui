@@ -53,33 +53,54 @@ inspect it, as shown below.
     from pysui import PysuiConfiguration, client_factory
     import pysui.sui.sui_grpc.pgrpc_requests as rn
     import pysui.sui.sui_grpc.pgrpc_filters as pgf
+    import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
     from grpclib.exceptions import StreamTerminatedError
 
-    async def stream_transactions():
-        """Stream transactions sent by the active address, via gRPC subscription."""
+    async def stream_transactions(max_reconnects: int = 1):
+        """Stream transactions sent by the active address, via gRPC
+        subscription — backfilling any gap via ListTransactions and
+        reconnecting up to `max_reconnects` times.
+        """
         cfg = PysuiConfiguration(
             group_name=PysuiConfiguration.SUI_GRPC_GROUP, profile_name="devnet"
         )
         client = client_factory(cfg)  # returns GrpcProtocolClient
 
+        fields = ["digest", "checkpoint"]
         tx_filter = pgf.build_transaction_filter(
             terms=[[pgf.Literal(predicate="sender", value=cfg.active_address)]]
         )
-        request = rn.SubscribeTransactions(
-            field_mask=["digest", "checkpoint"], tx_filter=tx_filter
-        )
-        result = await client.execute_grpc_request(request=request)
-
-        count = 0
-        try:
-            async for txn in result.result_data:
-                print(txn.to_json(indent=2))
-                count += 1
-        except StreamTerminatedError:
-            # Mysten's public gRPC load balancer resets filtered streams
-            # after ~30s (HTTP/2 RST_STREAM) — expected behavior, not an
-            # error. See "Stream termination and reconnect" below.
-            print(f"Stream terminated after {count} message(s) — see docs.")
+        last_cursor = None
+        reconnects_used = 0
+        while True:
+            request = rn.SubscribeTransactions(field_mask=fields, tx_filter=tx_filter)
+            result = await client.execute_grpc_request(request=request)
+            count = 0
+            try:
+                async for txn in result.result_data:
+                    if txn.watermark:
+                        last_cursor = txn.watermark.cursor
+                    print(txn.to_json(indent=2))
+                    count += 1
+            except StreamTerminatedError:
+                # Mysten's public gRPC load balancer resets filtered streams
+                # after ~30s (HTTP/2 RST_STREAM) — expected behavior, not an
+                # error. See "Stream termination and reconnect" below.
+                print(f"Stream terminated after {count} message(s).")
+                if reconnects_used >= max_reconnects:
+                    break
+                reconnects_used += 1
+                backfill = rn.ListTransactions(
+                    field_mask=fields,
+                    tx_filter=tx_filter,
+                    options=sui_prot.QueryOptions(after=last_cursor),
+                )
+                backfill_result = await client.execute_grpc_request(request=backfill)
+                async for msg in backfill_result.result_data:
+                    if msg.watermark:
+                        last_cursor = msg.watermark.cursor
+                    print(msg.to_json(indent=2))
+                continue  # loop back and resubscribe
 
         await client.close()
 
@@ -153,12 +174,54 @@ public infrastructure — not an error condition, and not specific to
 whether a filter has matched. A production consumer should catch this
 exception and reconnect, resuming from the last watermark cursor.
 
-Resumption is intended to work via the paired List RPCs on
-``LedgerService`` (``ListCheckpoints``, ``ListTransactions``,
-``ListEvents`` — unary-stream, filterable, orderable by sequence),
-passing the last watermark cursor as the resume point. The examples in
-``ucs_subscription_examples.py`` catch and report the stream termination
-but do not implement reconnect.
+Resumption works via the paired List RPCs on ``LedgerService``
+(:py:class:`~pysui.sui.sui_grpc.pgrpc_requests.ListCheckpoints`,
+:py:class:`~pysui.sui.sui_grpc.pgrpc_requests.ListTransactions`,
+:py:class:`~pysui.sui.sui_grpc.pgrpc_requests.ListEvents` —
+unary-stream, filterable, orderable by sequence). On termination, call
+the matching List request with ``options=QueryOptions(after=<last
+watermark cursor>)`` and the same filter to backfill anything missed
+during the gap, then reissue the ``Subscribe*`` request to resume live
+streaming, as shown in the example above. The example caps reconnects
+at one for demonstration; a production consumer would loop
+indefinitely.
+
+The full runnable version of this pattern, including additional status
+prints marking when each subscription attempt is live, is in
+``ucs_subscription_examples.py``.
+
+List RPCs (backfill and resume)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Three :py:class:`~pysui.sui.sui_grpc.pgrpc_absreq.PGRPC_Request` classes
+in :py:mod:`pysui.sui.sui_grpc.pgrpc_requests` wrap ``LedgerService``'s
+List RPCs — the pagination/backfill counterpart to each subscription:
+
+- ``ListCheckpoints`` — wraps ``LedgerService.ListCheckpoints``; takes a
+  ``tx_filter: TransactionFilter``. A checkpoint matches if any
+  transaction it contains satisfies the filter.
+- ``ListTransactions`` — wraps ``LedgerService.ListTransactions``; takes
+  a ``tx_filter: TransactionFilter``, the same filter type and shape
+  used by ``SubscribeTransactions``.
+- ``ListEvents`` — wraps ``LedgerService.ListEvents``; takes an
+  ``event_filter: EventFilter``, the same filter type and shape used by
+  ``SubscribeEvents``.
+
+Each also accepts ``field_mask``, ``start_checkpoint``/``end_checkpoint``
+(inclusive/exclusive checkpoint range — defaults to genesis and the
+current indexed ledger tip respectively), and ``options`` — a raw
+``sui_prot.QueryOptions`` for cursor-bounded pagination (``limit``,
+``after``, ``before``, ``ordering``).
+
+Every response frame carries a ``watermark`` (progress cursor, present
+on every frame whether or not it delivers a matching item) and, on the
+final frame of a successful query, an ``end`` with a
+``QueryEndReason`` (e.g. ``QUERY_END_REASON_LEDGER_TIP`` when the scan
+reaches the current ledger tip with nothing further to return). Pass
+the last received ``watermark.cursor`` as ``options.after``
+(ascending) or ``options.before`` (descending) to continue paginating,
+or to resume after a subscription reconnect, per "Stream termination
+and reconnect" above.
 
 GraphQL Subscriptions
 -----------------------

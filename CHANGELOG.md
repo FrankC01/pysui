@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added network_type to PysuiConfiguration profile declarations
-- BETA implementation of Gasless Stablecoin Transactions
+- [BETA](https://github.com/FrankC01/pysui/issues/398) implementation of Gasless Stablecoin Transactions
+- [BETA](https://github.com/FrankC01/pysui/issues/397) support for gRPC and GraphQL Subscriptions (not UCI)
 
 ### Fixed
 
@@ -18,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated ZkSealConfig to include network_type
 - SealClient to gate on network_type match with PysuiConfiguration profile network_type and avaliable key_server_sets
-- ZkClient to gate on availabel zklogin_providers
+- ZkClient to gate on available zklogin_providers
 
 ### Removed
 

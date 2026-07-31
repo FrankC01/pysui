@@ -41,6 +41,7 @@ from grpclib.exceptions import StreamTerminatedError
 from pysui import PysuiConfiguration, client_factory
 from pysui.sui.sui_grpc.pgrpc_clients import GrpcProtocolClient
 import pysui.sui.sui_grpc.pgrpc_requests as rn
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 import pysui.sui.sui_grpc.pgrpc_filters as pgf
 
@@ -82,29 +83,66 @@ async def do_grpc_subscribe_transactions(client: GrpcProtocolClient) -> None:
     this is running, fire off a transaction from the watched address (e.g.
     from another terminal/session) to see a matching message printed —
     otherwise nothing prints until the load-balancer terminates the stream
-    (see module docstring).
+    (see module docstring). On termination, backfills any transactions
+    missed during the gap via ListTransactions (resuming from the last
+    watermark cursor), then reconnects the subscription once to
+    demonstrate the reconnect/resume pattern documented in
+    subscriptions.rst.
     """
+    max_reconnects = 1
     fields = ["digest", "checkpoint"]
     tx_filter = pgf.build_transaction_filter(
         terms=[[pgf.Literal(predicate="sender", value=client.config.active_address)]]
     )
-    request = rn.SubscribeTransactions(field_mask=fields, tx_filter=tx_filter)
-    result = await client.execute_grpc_request(request=request)
-    if not result.is_ok():
-        print(result.result_string)
-        return
-    count = 0
-    try:
-        async for txn in result.result_data:
-            print(txn.to_json(indent=2))
-            count += 1
-    except StreamTerminatedError:
+    last_cursor = None
+    reconnects_used = 0
+    while True:
+        request = rn.SubscribeTransactions(field_mask=fields, tx_filter=tx_filter)
+        result = await client.execute_grpc_request(request=request)
+        if not result.is_ok():
+            print(result.result_string)
+            return
         print(
-            f"Stream terminated by remote after {count} message(s) "
-            "(expected ~30s public-node load-balancer timeout, not an "
-            "error). Reconnect and resume from the last watermark cursor "
-            "via the paired List API to continue."
+            f"Subscribed (attempt {reconnects_used + 1}) — fire a "
+            "transaction now to see it picked up."
         )
+        count = 0
+        try:
+            async for txn in result.result_data:
+                if txn.watermark:
+                    last_cursor = txn.watermark.cursor
+                print(txn.to_json(indent=2))
+                count += 1
+        except StreamTerminatedError:
+            print(
+                f"Stream terminated by remote after {count} message(s) "
+                "(expected ~30s public-node load-balancer timeout, not an "
+                "error)."
+            )
+            if reconnects_used >= max_reconnects:
+                print(f"Max reconnects ({max_reconnects}) reached. Stopping.")
+                return
+            reconnects_used += 1
+            print(
+                "Backfilling via ListTransactions from last watermark "
+                f"cursor (reconnect {reconnects_used}/{max_reconnects})..."
+            )
+            backfill_request = rn.ListTransactions(
+                field_mask=fields,
+                tx_filter=tx_filter,
+                options=sui_prot.QueryOptions(after=last_cursor),
+            )
+            backfill_result = await client.execute_grpc_request(
+                request=backfill_request
+            )
+            if not backfill_result.is_ok():
+                print(backfill_result.result_string)
+                return
+            async for msg in backfill_result.result_data:
+                if msg.watermark:
+                    last_cursor = msg.watermark.cursor
+                print(msg.to_json(indent=2))
+            print("Resuming live subscription...")
 
 
 async def do_grpc_subscribe_events(client: GrpcProtocolClient) -> None:
@@ -275,8 +313,8 @@ async def main():
     To switch which example runs, comment/uncomment the calls below.
     """
     try:
-        # await main_grpc()
-        await main_gql()
+        await main_grpc()
+        # await main_gql()
 
     except (ValueError, NotImplementedError) as ve:
         print(ve)
