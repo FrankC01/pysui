@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added network_type to PysuiConfiguration profile declarations
 - [BETA](https://github.com/FrankC01/pysui/issues/398) implementation of Gasless Stablecoin Transactions
-- [BETA](https://github.com/FrankC01/pysui/issues/397) support for gRPC and GraphQL Subscriptions (not UCI)
+- [BETA](https://github.com/FrankC01/pysui/issues/397) support for gRPC (Productio) and GraphQL Subscriptions (Beta).
+- httpx-sse dependency to support GraphQL subscriptions. See documentation.
 
 ### Fixed
 

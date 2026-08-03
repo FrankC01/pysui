@@ -2,6 +2,19 @@
 Subscriptions
 =============
 
+.. note::
+
+   **Subscription support status (as of August 2026)**
+
+   - **gRPC** subscriptions (``SubscribeCheckpoints``, ``SubscribeTransactions``,
+     ``SubscribeEvents``) are production-ready and available on devnet, testnet,
+     and mainnet.
+   - **GraphQL** subscriptions are not exposed through pysui's GraphQL client.
+     They are reachable today only via raw ``httpx``/``httpx-sse`` calls against
+     Sui's GraphQL subscription endpoint (devnet only — see the example script
+     for usage). Mysten's GraphQL subscription filtering mechanism is not
+     expected to land until Q3 2026.
+
 Subscriptions deliver a live feed of checkpoints, transactions, or events
 as they are finalized or emitted, without polling. Subscriptions are
 **not** SuiCommand/UCI-compatible: gRPC's read mask is a runtime
