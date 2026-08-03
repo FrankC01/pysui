@@ -7,8 +7,7 @@ pysui-fastcrypto >= 0.7.3
 # Optional: required for pysui[zklogin-seal] (zkLogin and SEAL features); uncomment the line below to install pysui-crypto
 # pysui-crypto == 0.1.0
 jsonschema < 4.30, >= 4.23.0
-gql[httpx,websockets] >= 4.0.0
-websockets < 16.0.0, >=15.0.1
+gql[httpx] >= 4.0.0
 typing_utils < 0.2.0, >=0.1.0
 canoser==0.8.2
 base58 < 2.2.0, >=2.1.1
