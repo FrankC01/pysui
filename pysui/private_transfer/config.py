@@ -20,7 +20,9 @@ from typing import Optional
 import dataclasses_json
 
 from pysui import PysuiConfiguration
-from pysui.sui.sui_common.config.confgroup import GroupProtocol
+from pysui.sui.sui_common.config.confgroup import GroupProtocol, NetworkType
+
+_CURRENT_PRIVATEFUNDS_CONFIG_VERSION: int = 2
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -36,12 +38,16 @@ class PrivateFundsGroup:
     :type token_registry: str
     :param account_registry: AccountRegistry shared-object id for this network
     :type account_registry: str
+    :param network_type: The Sui network type for this group; backfilled by
+        migration for well-known group names, otherwise must be set explicitly
+    :type network_type: Optional[NetworkType], optional
     """
 
     name: str
     package_id: str
     token_registry: str
     account_registry: str
+    network_type: Optional[NetworkType] = None
 
 
 @dataclasses_json.dataclass_json(letter_case=dataclasses_json.LetterCase.CAMEL)
@@ -64,9 +70,9 @@ class PrivateFundsConfig:
 
     On construction the configuration is loaded from ``PrivateFundsConfig.json``
     (creating the default file when the default ``~/.pysui`` location is used and
-    no file exists), and the group matching the active :class:`PysuiConfiguration`
-    profile is resolved and validated.  The matched group is available via
-    :attr:`active_group`.
+    no file exists), backlevel configurations are migrated in place, and the group
+    matching the active :class:`PysuiConfiguration` profile is resolved and
+    validated.  The matched group is available via :attr:`active_group`.
 
     :param pysui_config: The active pysui configuration whose group protocol and
         profile name drive group resolution
@@ -76,7 +82,9 @@ class PrivateFundsConfig:
     :type from_cfg_path: Optional[str], optional
     :raises ValueError: If ``from_cfg_path`` is given but the file does not exist
         there; if the active group protocol is not GraphQL or gRPC; if no group
-        name matches the active profile; or if the matched group's ids are unset
+        name matches the active profile; if the matched group's ids are unset; or
+        if the matched group's network_type does not match the active
+        PysuiConfiguration profile's network_type
     """
 
     _CONFIG_FILE_NAME: str = "PrivateFundsConfig.json"
@@ -88,7 +96,7 @@ class PrivateFundsConfig:
         pysui_config: PysuiConfiguration,
         from_cfg_path: Optional[str] = None,
     ) -> None:
-        """Load the configuration and resolve the active group."""
+        """Load the configuration, migrate if needed, and resolve the active group."""
         self._config_root: pathlib.Path = pathlib.Path(
             from_cfg_path or self._DEFAULT_DIR
         ).expanduser()
@@ -100,9 +108,7 @@ class PrivateFundsConfig:
         self._model: _PrivateFundsConfigModel = _PrivateFundsConfigModel.from_json(
             self._config_file.read_text()
         )
-        # NOTE (future): an optional override may be added here to force a specific
-        # group regardless of the active PysuiConfiguration profile.  For now the
-        # profile name and group name must align.
+        self._migrate_if_needed()
         self._active_group: PrivateFundsGroup = self._match_active_group(
             pysui_config=pysui_config
         )
@@ -125,6 +131,33 @@ class PrivateFundsConfig:
         """
         return self._active_group
 
+    def save(self, path: Optional[pathlib.Path] = None) -> None:
+        """Persist the current configuration to disk.
+
+        :param path: Destination file path; defaults to the path used at construction
+        :type path: Optional[pathlib.Path], optional
+        """
+        target = path or self._config_file
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(self._model.to_json(indent=2))
+
+    def _migrate_if_needed(self) -> None:
+        """Bump PrivateFundsConfig schema version and persist if a backlevel config was loaded."""
+        if self._model.version < _CURRENT_PRIVATEFUNDS_CONFIG_VERSION:
+            well_known_network_types = {
+                "devnet": NetworkType.DEVELOP,
+                "testnet": NetworkType.TEST,
+                "mainnet": NetworkType.PRODUCTION,
+            }
+            for group in self._model.groups:
+                if (
+                    group.network_type is None
+                    and group.name in well_known_network_types
+                ):
+                    group.network_type = well_known_network_types[group.name]
+            self._model.version = _CURRENT_PRIVATEFUNDS_CONFIG_VERSION
+            self.save()
+
     def _initialize_config(self) -> None:
         """Create the default configuration file with network groups.
 
@@ -135,9 +168,15 @@ class PrivateFundsConfig:
         """
         network_ids: dict[str, dict[str, str]] = {
             "devnet": {
-                "package_id": "0x5dd6554268ac3e50b9c510a84bb75b6ba85bb491cd5f18314cbb2b9a5cf1dca5",
-                "token_registry": "0xbf5f6e9e9af66e87691e6c43091aa54eaf18e47b9aca7d18ac94d85445772d6c",
-                "account_registry": "0xbdb5acc18cc7dbd02967fd1ebec44c1a5192b889dab2a4cd56d6a671d3a8c02a",
+                "package_id": (
+                    "0x5dd6554268ac3e50b9c510a84bb75b6ba85bb491cd5f18314cbb2b9a5cf1dca5"
+                ),
+                "token_registry": (
+                    "0xbf5f6e9e9af66e87691e6c43091aa54eaf18e47b9aca7d18ac94d85445772d6c"
+                ),
+                "account_registry": (
+                    "0xbdb5acc18cc7dbd02967fd1ebec44c1a5192b889dab2a4cd56d6a671d3a8c02a"
+                ),
             },
             "testnet": {
                 "package_id": "0x",
@@ -150,11 +189,21 @@ class PrivateFundsConfig:
                 "account_registry": "0x",
             },
         }
+        well_known_network_types = {
+            "devnet": NetworkType.DEVELOP,
+            "testnet": NetworkType.TEST,
+            "mainnet": NetworkType.PRODUCTION,
+        }
         model: _PrivateFundsConfigModel = _PrivateFundsConfigModel(
+            version=_CURRENT_PRIVATEFUNDS_CONFIG_VERSION,
             groups=[
-                PrivateFundsGroup(name=name, **ids)
+                PrivateFundsGroup(
+                    name=name,
+                    network_type=well_known_network_types.get(name),
+                    **ids,
+                )
                 for name, ids in network_ids.items()
-            ]
+            ],
         )
         self._config_root.mkdir(parents=True, exist_ok=True)
         self._config_file.write_text(model.to_json(indent=2))
@@ -167,8 +216,9 @@ class PrivateFundsConfig:
         :param pysui_config: The active pysui configuration
         :type pysui_config: PysuiConfiguration
         :raises ValueError: If the active group protocol is not GraphQL or gRPC; if
-            no group name matches the active profile; or if the matched group's ids
-            are still placeholders
+            no group name matches the active profile; if the matched group's ids
+            are still placeholders; or if the matched group's network_type does not
+            match the active PysuiConfiguration profile's network_type
         :returns: The matched and validated group
         :rtype: PrivateFundsGroup
         """
@@ -203,4 +253,106 @@ class PrivateFundsConfig:
                     f"PrivateFundsConfig group '{profile_name}' has an unconfigured "
                     f"{label} ('{value}').  Set a valid object id before use."
                 )
+        # Gate 4 — the matched group's network_type must equal the active
+        # PysuiConfiguration profile's network_type.
+        active_network_type: Optional[NetworkType] = (
+            pysui_config.active_group.active_profile.network_type
+        )
+        if matched.network_type != active_network_type:
+            matched_str = (
+                matched.network_type.to_string() if matched.network_type else "unset"
+            )
+            active_str = (
+                active_network_type.to_string() if active_network_type else "unset"
+            )
+            raise ValueError(
+                f"PrivateFundsConfig group '{profile_name}' has network_type "
+                f"'{matched_str}', which does not match the active "
+                f"PysuiConfiguration profile's network_type '{active_str}'."
+            )
         return matched
+
+    def add_group(
+        self,
+        *,
+        name: str,
+        network_type: NetworkType,
+        package_id: str,
+        token_registry: str,
+        account_registry: str,
+        persist: bool = False,
+    ) -> PrivateFundsGroup:
+        """Add a new PrivateFundsConfig group.
+
+        :param name: Identifier for the new group; should match a PysuiConfiguration profile name
+        :type name: str
+        :param network_type: The Sui network type for this group
+        :type network_type: NetworkType
+        :param package_id: Confidential Transfer package id for this network
+        :type package_id: str
+        :param token_registry: TokenRegistry shared-object id for this network
+        :type token_registry: str
+        :param account_registry: AccountRegistry shared-object id for this network
+        :type account_registry: str
+        :param persist: Save the configuration after adding, defaults to False
+        :type persist: bool, optional
+        :raises ValueError: If a group with this name already exists or network_type is invalid
+        :return: The newly created PrivateFundsGroup
+        :rtype: PrivateFundsGroup
+        """
+        if network_type is None or not isinstance(network_type, NetworkType):
+            raise ValueError(f"'{network_type}' is not a valid NetworkType")
+        if any(g.name == name for g in self._model.groups):
+            raise ValueError(f"Group '{name}' already exists")
+        group = PrivateFundsGroup(
+            name=name,
+            package_id=package_id,
+            token_registry=token_registry,
+            account_registry=account_registry,
+            network_type=network_type,
+        )
+        self._model.groups.append(group)
+        if persist:
+            self.save()
+        return group
+
+    def update_group(
+        self,
+        *,
+        name: str,
+        network_type: Optional[NetworkType] = None,
+        package_id: Optional[str] = None,
+        token_registry: Optional[str] = None,
+        account_registry: Optional[str] = None,
+        persist: bool = True,
+    ) -> PrivateFundsGroup:
+        """Update an existing PrivateFundsConfig group.
+
+        Unspecified parameters leave the corresponding field unchanged.
+
+        :param name: Identifier of the group to update
+        :type name: str
+        :param network_type: The Sui network type for this group, defaults to None (unchanged)
+        :type network_type: Optional[NetworkType], optional
+        :param package_id: Confidential Transfer package id, defaults to None (unchanged)
+        :type package_id: Optional[str], optional
+        :param token_registry: TokenRegistry shared-object id, defaults to None (unchanged)
+        :type token_registry: Optional[str], optional
+        :param account_registry: AccountRegistry shared-object id, defaults to None (unchanged)
+        :type account_registry: Optional[str], optional
+        :param persist: Save the configuration after updating, defaults to True
+        :type persist: bool, optional
+        :raises ValueError: If no group with this name exists
+        :return: The updated PrivateFundsGroup
+        :rtype: PrivateFundsGroup
+        """
+        group = next((g for g in self._model.groups if g.name == name), None)
+        if group is None:
+            raise ValueError(f"Group '{name}' does not exist")
+        group.network_type = network_type or group.network_type
+        group.package_id = package_id or group.package_id
+        group.token_registry = token_registry or group.token_registry
+        group.account_registry = account_registry or group.account_registry
+        if persist:
+            self.save()
+        return group
