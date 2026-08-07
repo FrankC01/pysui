@@ -578,15 +578,20 @@ async def inspect_example(client: AsyncClientBase):
 
 
 async def do_gasless_stablecoin_txn(client: AsyncClientBase):
-    """Build a gasless-eligible USDC send_funds PTB (gRPC + testnet only) and simulate it."""
+    """Build a gasless-eligible USDC send_funds PTB (gRPC, testnet or mainnet) and simulate it."""
     if client.config.active_group.group_protocol != GroupProtocol.GRPC:
         print("do_gasless_stablecoin_txn: active group protocol must be gRPC.")
         return
-    if client.config.active_group.active_profile.network_type != NetworkType.TEST:
-        print("do_gasless_stablecoin_txn: active profile must be testnet.")
+    if client.config.active_group.active_profile.network_type not in (
+        NetworkType.TEST,
+        NetworkType.PRODUCTION,
+    ):
+        print("do_gasless_stablecoin_txn: active profile must be testnet or mainnet.")
         return
 
-    # USDC type otherwise substitute with allow listed stablecoin
+    # USDC type below is a TESTNET token address. Substitute with a valid
+    # allow-listed stablecoin coin type for the NetworkType you are actually
+    # targeting (testnet vs mainnet) before running this example.
     coin_type = (
         "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
     )

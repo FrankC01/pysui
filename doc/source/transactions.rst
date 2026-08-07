@@ -127,12 +127,13 @@ Gasless Stablecoin Transfers
 
 .. note::
 
-   pysui's support for gasless stablecoin transfers is considered **BETA**.
+   Gasless stablecoin transfers are currently supported only via the gRPC
+   transport protocol. GraphQL support is pending updates from Mysten Labs,
+   targeted for approximately Q3 2026.
 
 Gasless stablecoin transfers allow certain transactions to be executed without
 a gas budget when the transaction exclusively involves transfers of
-whitelisted stablecoins. This feature is currently supported only when using
-the gRPC transport protocol; it is not yet available with the GraphQL protocol.
+whitelisted stablecoins.
 
 A single PTB may involve more than one whitelisted stablecoin type — pysui
 does not require all stablecoin transfers within a transaction to share the
@@ -152,6 +153,68 @@ If the transaction does not meet the eligibility criteria, pysui falls back to
 standard gas handling, and all gas-related build arguments (``gas_budget``,
 ``use_gas_objects``, ``use_account_for_gas``, ``auto_gas``) are honored as
 normal.
+
+The following example builds and simulates a gasless-eligible USDC transfer:
+
+.. code-block:: python
+
+   async def do_gasless_stablecoin_txn():
+       """Build a gasless-eligible USDC send_funds PTB (gRPC, testnet or mainnet) and simulate it."""
+       client = client_factory(
+           PysuiConfiguration(
+               # Uncomment one group:
+               # group_name=PysuiConfiguration.SUI_GQL_RPC_GROUP,
+               group_name=PysuiConfiguration.SUI_GRPC_GROUP,
+               # profile_name="devnet",
+               profile_name="testnet",
+               # profile_name="mainnet",
+           )
+       )
+       if client.config.active_group.group_protocol != GroupProtocol.GRPC:
+           print("do_gasless_stablecoin_txn: active group protocol must be gRPC.")
+           return
+       if client.config.active_group.active_profile.network_type not in (
+           NetworkType.TEST,
+           NetworkType.PRODUCTION,
+       ):
+           print("do_gasless_stablecoin_txn: active profile must be testnet or mainnet.")
+           return
+
+       # USDC type below is a TESTNET token address. Substitute with a valid
+       # allow-listed stablecoin coin type for the NetworkType you are actually
+       # targeting (testnet vs mainnet) before running this example.
+       coin_type = (
+           "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
+       )
+       result = await client.execute(
+           command=cmd.GetCoins(
+               owner=client.config.active_address,
+               coin_type=f"0x2::coin::Coin<{coin_type}>",
+           )
+       )
+       if not result.is_ok() or not result.result_data.objects:
+           print("do_gasless_stablecoin_txn: no USDC coins found for active address.")
+           return
+
+       txer: AsyncSuiTransaction = await client.transaction()
+       await txer.fund_address_accumulator(
+           funds=result.result_data.objects[0],
+           recipient=client.config.active_address,
+           funds_type=coin_type,
+       )
+       # Uncomment to simulate (dry run)
+       # result = await client.execute(
+       #     command=cmd.SimulateTransactionKind(
+       #         tx_kind=await txer.raw_kind(),
+       #         tx_meta={"sender": client.config.active_address},
+       #     )
+       # )
+       # print(result.result_data.to_json(indent=2))
+       # Uncomment to execute
+       result = await client.execute(
+           command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+       )
+       print(result.result_data.to_json(indent=2))
 
 For the full protocol-level specification of gasless transactions and the
 current list of supported stablecoin types, refer to `Sui's official
