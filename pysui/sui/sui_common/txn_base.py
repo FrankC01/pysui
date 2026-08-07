@@ -30,6 +30,29 @@ from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 # Standard library logging setup
 logger = logging.getLogger(__name__)
 
+# Module-level constants for gasless transaction validation
+_GASLESS_PASSTHRU_COMMANDS: set[str] = {"SplitCoin", "MergeCoins"}
+"""PTB command variants permitted in a gasless transaction without a move call."""
+
+_GASLESS_FUNCTIONS: set[tuple[str, str]] = {
+    ("balance", "send_funds"),
+    ("balance", "redeem_funds"),
+    ("balance", "split"),
+    ("balance", "zero"),
+    ("funds_accumulator", "withdrawal_split"),
+    ("coin", "into_balance"),
+    ("coin", "redeem_funds"),
+    ("coin", "send_funds"),
+    ("coin", "put"),
+}
+"""Sui framework (0x2) move calls permitted in a gasless transaction."""
+
+_GASLESS_BALANCE_WRAPPED: tuple[str, str] = ("funds_accumulator", "withdrawal_split")
+"""The only gasless function whose type argument is ``Balance<T>`` rather than ``T``."""
+
+_SUI_FRAMEWORK_ADDRESS_STR: str = bcs.Address.from_str("0x2").to_address_str()
+"""Canonical Sui framework (0x2) address string used for gasless move call validation."""
+
 
 class _TransactionBase:
     """."""
@@ -310,6 +333,68 @@ class _TransactionBase:
                 uses_gas_coin = uses_gas_coin or self._any_arg_is_gas_coin(cmd_val.Vector)
 
         return uses_gas_coin, gas_source_draw
+
+    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase._inspect_ptb_for_gasless")
+    def _inspect_ptb_for_gasless(self) -> Optional[list[str]]:
+        """Inspect the PTB for gasless stablecoin transfer eligibility.
+
+        A transaction is structurally eligible when every command is either a
+        coin split/merge or a whitelisted Sui framework move call. A PTB may
+        contain move calls across more than one coin type; heterogeneous
+        stablecoins within a single PTB are permitted.
+
+        :returns: The distinct canonical coin type strings found across all
+            move calls when structurally eligible, otherwise None
+        :rtype: Optional[list[str]]
+        """
+        collected_types: set[str] = set()
+
+        for cmd in self.builder.commands:
+            cmd_name = cmd.enum_name
+            cmd_val = cmd.value
+
+            # Skip passthrough commands (splits and merges)
+            if cmd_name in _GASLESS_PASSTHRU_COMMANDS:
+                continue
+
+            # Any other command besides MoveCall disqualifies
+            if cmd_name != "MoveCall":
+                return None
+
+            # Process MoveCall
+            # Check if package is Sui framework (0x2)
+            if cmd_val.Package.to_address_str() != _SUI_FRAMEWORK_ADDRESS_STR:
+                return None
+
+            # Check if (Module, Function) tuple is whitelisted
+            module_func_tuple = (cmd_val.Module, cmd_val.Function)
+            if module_func_tuple not in _GASLESS_FUNCTIONS:
+                return None
+
+            # Extract coin type string
+            if not cmd_val.Type_Arguments:
+                return None
+
+            coin_type_str: str
+            if module_func_tuple == _GASLESS_BALANCE_WRAPPED:
+                # funds_accumulator::withdrawal_split uses Balance<T> as type argument
+                type_arg = cmd_val.Type_Arguments[0]
+                if type_arg.enum_name != "Struct":
+                    return None
+                struct_tag = type_arg.value
+                if not struct_tag.type_parameters:
+                    return None
+                coin_type_str = struct_tag.type_parameters[0].type_tag_to_str()
+            else:
+                # All other whitelisted functions use T directly
+                coin_type_str = cmd_val.Type_Arguments[0].type_tag_to_str()
+
+            collected_types.add(coin_type_str)
+
+        if not collected_types:
+            return None
+
+        return sorted(collected_types)
 
 
 class FundsSource(IntEnum):

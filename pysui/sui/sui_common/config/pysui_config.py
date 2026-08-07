@@ -104,6 +104,9 @@ class PysuiConfiguration:
                 prf.url = "https://graphql.testnet.sui.io/graphql"
             elif prf.profile_name == "mainnet":
                 prf.url = "https://graphql.mainnet.sui.io/graphql"
+            prf.network_type = cfg_group.WELL_KNOWN_NETWORK_TYPES.get(
+                prf.url, prf.network_type
+            )
         return group_cfg
 
     @classmethod
@@ -124,15 +127,26 @@ class PysuiConfiguration:
                 prf.url = "fullnode.testnet.sui.io:443"
             elif prf.profile_name == "mainnet":
                 prf.url = "fullnode.mainnet.sui.io:443"
+            prf.network_type = cfg_group.WELL_KNOWN_NETWORK_TYPES.get(
+                prf.url, prf.network_type
+            )
         # Append archive profiles
         group_cfg.add_profile(
             new_prf=cfg_group.Profile(
-                profile_name="main-arch", url="archive.mainnet.sui.io:443"
+                profile_name="main-arch",
+                url="archive.mainnet.sui.io:443",
+                network_type=cfg_group.WELL_KNOWN_NETWORK_TYPES.get(
+                    "archive.mainnet.sui.io:443"
+                ),
             )
         )
         group_cfg.add_profile(
             new_prf=cfg_group.Profile(
-                profile_name="test-arch", url="archive.testnet.sui.io:443"
+                profile_name="test-arch",
+                url="archive.testnet.sui.io:443",
+                network_type=cfg_group.WELL_KNOWN_NETWORK_TYPES.get(
+                    "archive.testnet.sui.io:443"
+                ),
             )
         )
 
@@ -406,6 +420,7 @@ class PysuiConfiguration:
             {
                 "profile_name": str,
                 "url": str,
+                "network_type": NetworkType,
                 "faucet_url": str | None,
                 "faucet_status_url": str | None,
                 "make_active": bool
@@ -589,6 +604,7 @@ class PysuiConfiguration:
         *,
         profile_name: str,
         url: str,
+        network_type: cfg_group.NetworkType,
         faucet_url: Optional[str] = None,
         faucet_status_url: Optional[str] = None,
         make_active: Optional[bool] = False,
@@ -601,6 +617,8 @@ class PysuiConfiguration:
         :type porfile_name: str
         :param url: The url reference for the profile
         :type url: str
+        :param network_type: The network environment indicator for the profile
+        :type network_type: cfg_group.NetworkType
         :param faucet_url: The faucet url reference for the profile, defaults to None
         :type faucet_url: Optional[str], optional
         :param faucet_status_url: The faucet status url reference for the profile, defaults to None
@@ -618,7 +636,9 @@ class PysuiConfiguration:
             else self.active_group
         )
         _group.add_profile(
-            new_prf=cfg_group.Profile(profile_name, url, faucet_url, faucet_status_url),
+            new_prf=cfg_group.Profile(
+                profile_name, url, faucet_url, faucet_status_url, network_type
+            ),
             make_active=bool(make_active),
         )
         if persist:
@@ -632,6 +652,7 @@ class PysuiConfiguration:
         url: Optional[str] = None,
         faucet_url: Optional[str] = None,
         faucet_status_url: Optional[str] = None,
+        network_type: Optional[cfg_group.NetworkType] = None,
         in_group: Optional[str] = None,
         persist: Optional[bool] = True,
     ):
@@ -645,6 +666,8 @@ class PysuiConfiguration:
         :type faucet_url: Optional[str], optional
         :param faucet_status_url: The faucet status url reference for the profile, defaults to None
         :type faucet_status_url: Optional[str], optional
+        :param network_type: The network environment indicator for the profile, defaults to None
+        :type network_type: Optional[cfg_group.NetworkType], optional
         :param make_active: Sets this as the groups active_profile, defaults to False
         :type make_active: Optional[bool], optional
         :param in_group: Group to add new profile, defaults to active_group or excepts if not exists
@@ -661,6 +684,7 @@ class PysuiConfiguration:
         _prf.url = url or _prf.url
         _prf.faucet_url = faucet_url or _prf.faucet_url
         _prf.faucet_status_url = faucet_status_url or _prf.faucet_status_url
+        _prf.network_type = network_type or _prf.network_type
         if persist:
             self._write_model()
 

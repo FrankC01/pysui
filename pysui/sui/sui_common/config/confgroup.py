@@ -34,6 +34,37 @@ class GroupProtocol(IntEnum):
         return "other"
 
 
+class NetworkType(IntEnum):
+    """Network environment indicator for a connection profile."""
+
+    LOCAL = 1
+    DEVELOP = 2
+    TEST = 3
+    PRODUCTION = 4
+
+    def to_string(self) -> str:
+        """Return display name for this network type."""
+        if self == NetworkType.LOCAL:
+            return "local"
+        if self == NetworkType.DEVELOP:
+            return "developer"
+        if self == NetworkType.TEST:
+            return "test"
+        return "production"
+
+
+WELL_KNOWN_NETWORK_TYPES: dict[str, NetworkType] = {
+    "https://graphql.devnet.sui.io/graphql": NetworkType.DEVELOP,
+    "https://graphql.testnet.sui.io/graphql": NetworkType.TEST,
+    "https://graphql.mainnet.sui.io/graphql": NetworkType.PRODUCTION,
+    "fullnode.devnet.sui.io:443": NetworkType.DEVELOP,
+    "fullnode.testnet.sui.io:443": NetworkType.TEST,
+    "fullnode.mainnet.sui.io:443": NetworkType.PRODUCTION,
+    "archive.testnet.sui.io:443": NetworkType.TEST,
+    "archive.mainnet.sui.io:443": NetworkType.PRODUCTION,
+}
+
+
 SUI_JSON_RPC_GROUP: str = "sui_json_config"
 SUI_GQL_RPC_GROUP: str = "sui_gql_config"
 SUI_GRPC_GROUP: str = "sui_grpc_config"
@@ -63,6 +94,7 @@ class Profile(dataclasses_json.DataClassJsonMixin):
     url: str
     faucet_url: Optional[str] = None
     faucet_status_url: Optional[str] = None
+    network_type: Optional["NetworkType"] = None
 
 
 @dataclasses.dataclass

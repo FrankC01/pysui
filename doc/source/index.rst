@@ -43,6 +43,12 @@ Welcome to pysui's documentation!
 
 .. toctree::
    :maxdepth: 1
+   :caption: Subscriptions
+
+   subscriptions
+
+.. toctree::
+   :maxdepth: 1
    :caption: zkLogin and SEAL
 
    zklogin_seal_install
@@ -59,12 +65,6 @@ Welcome to pysui's documentation!
    logging
    utilities
    benchmark
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Events & Streaming
-
-   subscriptions
 
 .. toctree::
    :maxdepth: 1

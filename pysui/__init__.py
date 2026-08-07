@@ -69,7 +69,7 @@ from .version import __version__
 SDK_CURRENT_VERSION: list[str] = [int(x) for x in __version__.split(".")]
 
 from pysui.sui.sui_common.config import PysuiConfiguration
-from pysui.sui.sui_common.config.confgroup import GroupProtocol
+from pysui.sui.sui_common.config.confgroup import GroupProtocol, NetworkType
 from pysui.sui.sui_common.client import PysuiClient
 from pysui.abstracts.async_client import AsyncClientBase
 from pysui.sui.sui_common.factory import client_factory

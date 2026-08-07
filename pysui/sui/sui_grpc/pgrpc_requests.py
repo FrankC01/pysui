@@ -1592,23 +1592,27 @@ class GetModule(GetPackage):
             )
 
 
-class SubscribeCheckpoint(absreq.PGRPC_Request):
+class SubscribeCheckpoints(absreq.PGRPC_Request):
     """Subscribe to a feed of checkpoints."""
 
     RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeCheckpointsResponse
 
-    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoint.__init__")
+    @sync_instrumented(
+        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoints.__init__"
+    )
     def __init__(
         self,
         *,
         field_mask: Optional[list[str]] = None,
+        tx_filter: Optional[sui_prot.TransactionFilter] = None,
     ) -> None:
         """Initializer."""
         super().__init__(absreq.Service.SUBSCRIPTION)
         self.field_mask = self._field_mask(field_mask)
+        self.tx_filter = tx_filter
 
     @sync_instrumented(
-        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoint.to_request"
+        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoints.to_request"
     )
     def to_request(
         self, *, stub: sui_prot.SubscriptionServiceStub
@@ -1617,7 +1621,232 @@ class SubscribeCheckpoint(absreq.PGRPC_Request):
     ]:
         """."""
         return stub.subscribe_checkpoints, sui_prot.SubscribeCheckpointsRequest(
-            read_mask=self.field_mask
+            read_mask=self.field_mask, filter=self.tx_filter
+        )
+
+
+class SubscribeTransactions(absreq.PGRPC_Request):
+    """Subscribe to a feed of finalized transactions."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeTransactionsResponse
+
+    @sync_instrumented(
+        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeTransactions.__init__"
+    )
+    def __init__(
+        self,
+        *,
+        field_mask: Optional[list[str]] = None,
+        tx_filter: Optional[sui_prot.TransactionFilter] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.SUBSCRIPTION)
+        self.field_mask = self._field_mask(field_mask)
+        self.tx_filter = tx_filter
+
+    @sync_instrumented(
+        "pysui.sui.sui_grpc.pgrpc_requests.SubscribeTransactions.to_request"
+    )
+    def to_request(
+        self, *, stub: sui_prot.SubscriptionServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.subscribe_transactions, sui_prot.SubscribeTransactionsRequest(
+            read_mask=self.field_mask, filter=self.tx_filter
+        )
+
+
+class SubscribeEvents(absreq.PGRPC_Request):
+    """Subscribe to a feed of emitted events."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeEventsResponse
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SubscribeEvents.__init__")
+    def __init__(
+        self,
+        *,
+        field_mask: Optional[list[str]] = None,
+        event_filter: Optional[sui_prot.EventFilter] = None,
+    ) -> None:
+        """Initializer."""
+        super().__init__(absreq.Service.SUBSCRIPTION)
+        self.field_mask = self._field_mask(field_mask)
+        self.event_filter = event_filter
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SubscribeEvents.to_request")
+    def to_request(
+        self, *, stub: sui_prot.SubscriptionServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.subscribe_events, sui_prot.SubscribeEventsRequest(
+            read_mask=self.field_mask, filter=self.event_filter
+        )
+
+
+class ListCheckpoints(absreq.PGRPC_Request):
+    """Query for a paginated stream of checkpoints, resumable via watermark cursor."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.ListCheckpointsResponse
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ListCheckpoints.__init__")
+    def __init__(
+        self,
+        *,
+        field_mask: Optional[list[str]] = None,
+        start_checkpoint: Optional[int] = None,
+        end_checkpoint: Optional[int] = None,
+        tx_filter: Optional[sui_prot.TransactionFilter] = None,
+        options: Optional[sui_prot.QueryOptions] = None,
+    ) -> None:
+        """Initializer.
+
+        :param field_mask: Optional list of field paths specifying which parts of the
+            Checkpoint should be returned (e.g. summary, contents, signatures).
+        :param start_checkpoint: Optional start of the checkpoint range to query
+            (inclusive). Defaults to genesis.
+        :param end_checkpoint: Optional end of the checkpoint range to query
+            (exclusive). Defaults to the current indexed ledger tip.
+        :param tx_filter: Optional DNF filter over indexed transaction dimensions. A
+            checkpoint matches if any transaction it contains satisfies the filter.
+            If absent, all checkpoints in the range are returned.
+        :param options: Optional cursor-bounded query options (limit, after/before
+            watermark cursor, ordering). If unspecified, reads in ascending order
+            with the default item limit. To paginate/resume, pass the last received
+            Watermark.cursor as options.after (ascending) or options.before
+            (descending) on the next request.
+        """
+        super().__init__(absreq.Service.LEDGER)
+        self.field_mask = self._field_mask(field_mask)
+        self.start_checkpoint = start_checkpoint
+        self.end_checkpoint = end_checkpoint
+        self.tx_filter = tx_filter
+        self.options = options
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ListCheckpoints.to_request")
+    def to_request(
+        self, *, stub: sui_prot.LedgerServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.list_checkpoints, sui_prot.ListCheckpointsRequest(
+            read_mask=self.field_mask,
+            start_checkpoint=self.start_checkpoint,
+            end_checkpoint=self.end_checkpoint,
+            filter=self.tx_filter,
+            options=self.options,
+        )
+
+
+class ListTransactions(absreq.PGRPC_Request):
+    """Query for a paginated stream of transactions, resumable via watermark cursor."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.ListTransactionsResponse
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ListTransactions.__init__")
+    def __init__(
+        self,
+        *,
+        field_mask: Optional[list[str]] = None,
+        start_checkpoint: Optional[int] = None,
+        end_checkpoint: Optional[int] = None,
+        tx_filter: Optional[sui_prot.TransactionFilter] = None,
+        options: Optional[sui_prot.QueryOptions] = None,
+    ) -> None:
+        """Initializer.
+
+        :param field_mask: Optional list of field paths specifying which parts of the
+            ExecutedTransaction should be returned.
+        :param start_checkpoint: Optional start of the checkpoint range to query
+            (inclusive). Defaults to genesis.
+        :param end_checkpoint: Optional end of the checkpoint range to query
+            (exclusive). Defaults to the current indexed ledger tip.
+        :param tx_filter: Optional DNF filter over indexed dimensions. If absent, all
+            transactions in the range are returned.
+        :param options: Optional cursor-bounded query options (limit, after/before
+            watermark cursor, ordering). If unspecified, reads in ascending order
+            with the default item limit. To paginate/resume, pass the last received
+            Watermark.cursor as options.after (ascending) or options.before
+            (descending) on the next request.
+        """
+        super().__init__(absreq.Service.LEDGER)
+        self.field_mask = self._field_mask(field_mask)
+        self.start_checkpoint = start_checkpoint
+        self.end_checkpoint = end_checkpoint
+        self.tx_filter = tx_filter
+        self.options = options
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ListTransactions.to_request")
+    def to_request(
+        self, *, stub: sui_prot.LedgerServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.list_transactions, sui_prot.ListTransactionsRequest(
+            read_mask=self.field_mask,
+            start_checkpoint=self.start_checkpoint,
+            end_checkpoint=self.end_checkpoint,
+            filter=self.tx_filter,
+            options=self.options,
+        )
+
+
+class ListEvents(absreq.PGRPC_Request):
+    """Query for a paginated stream of events, resumable via watermark cursor."""
+
+    RESULT_TYPE: betterproto2.Message = sui_prot.ListEventsResponse
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ListEvents.__init__")
+    def __init__(
+        self,
+        *,
+        field_mask: Optional[list[str]] = None,
+        start_checkpoint: Optional[int] = None,
+        end_checkpoint: Optional[int] = None,
+        event_filter: Optional[sui_prot.EventFilter] = None,
+        options: Optional[sui_prot.QueryOptions] = None,
+    ) -> None:
+        """Initializer.
+
+        :param field_mask: Optional list of field paths specifying which parts of the
+            Event should be returned.
+        :param start_checkpoint: Optional start of the checkpoint range to query
+            (inclusive). Defaults to genesis.
+        :param end_checkpoint: Optional end of the checkpoint range to query
+            (exclusive). Defaults to the current indexed ledger tip.
+        :param event_filter: Optional DNF filter over indexed dimensions. If absent,
+            all events in the range are returned.
+        :param options: Optional cursor-bounded query options (limit, after/before
+            watermark cursor, ordering). If unspecified, reads in ascending order
+            with the default item limit. To paginate/resume, pass the last received
+            Watermark.cursor as options.after (ascending) or options.before
+            (descending) on the next request.
+        """
+        super().__init__(absreq.Service.LEDGER)
+        self.field_mask = self._field_mask(field_mask)
+        self.start_checkpoint = start_checkpoint
+        self.end_checkpoint = end_checkpoint
+        self.event_filter = event_filter
+        self.options = options
+
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ListEvents.to_request")
+    def to_request(
+        self, *, stub: sui_prot.LedgerServiceStub
+    ) -> tuple[
+        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+    ]:
+        """."""
+        return stub.list_events, sui_prot.ListEventsRequest(
+            read_mask=self.field_mask,
+            start_checkpoint=self.start_checkpoint,
+            end_checkpoint=self.end_checkpoint,
+            filter=self.event_filter,
+            options=self.options,
         )
 
 

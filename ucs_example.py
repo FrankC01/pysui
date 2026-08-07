@@ -13,7 +13,14 @@ do_xx() functions work unchanged with either protocol.
 import asyncio
 import base64
 
-from pysui import PysuiConfiguration, SuiRpcResult, client_factory, AsyncClientBase
+from pysui import (
+    PysuiConfiguration,
+    SuiRpcResult,
+    client_factory,
+    AsyncClientBase,
+    GroupProtocol,
+    NetworkType,
+)
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from pysui.sui.sui_common.txn_base import FundsSource
 
@@ -504,6 +511,57 @@ async def inspect_example(client: AsyncClientBase):
     await do_dry_run_txkind(txer)
 
 
+async def do_gasless_stablecoin_txn(client: AsyncClientBase):
+    """Build a gasless-eligible USDC send_funds PTB (gRPC, testnet or mainnet) and simulate it."""
+    if client.config.active_group.group_protocol != GroupProtocol.GRPC:
+        print("do_gasless_stablecoin_txn: active group protocol must be gRPC.")
+        return
+    if client.config.active_group.active_profile.network_type not in (
+        NetworkType.TEST,
+        NetworkType.PRODUCTION,
+    ):
+        print("do_gasless_stablecoin_txn: active profile must be testnet or mainnet.")
+        return
+
+    # USDC type below is a TESTNET token address. Substitute with a valid
+    # allow-listed stablecoin coin type for the NetworkType you are actually
+    # targeting (testnet vs mainnet) before running this example.
+    coin_type = (
+        "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
+    )
+    result = await client.execute(
+        command=cmd.GetCoins(
+            owner=client.config.active_address,
+            coin_type=f"0x2::coin::Coin<{coin_type}>",
+        )
+    )
+    if not result.is_ok() or not result.result_data.objects:
+        print("do_gasless_stablecoin_txn: no USDC coins found for active address.")
+        return
+
+    txer: AsyncSuiTransaction = await client.transaction()
+    await txer.fund_address_accumulator(
+        funds=result.result_data.objects[0],
+        recipient=client.config.active_address,
+        funds_type=coin_type,
+    )
+    # Uncomment to simulate (dry run)
+    handle_result(
+        await client.execute(
+            command=cmd.SimulateTransactionKind(
+                tx_kind=await txer.raw_kind(),
+                tx_meta={"sender": client.config.active_address},
+            )
+        )
+    )
+    # Uncomment to execute
+    # handle_result(
+    #     await client.execute(
+    #         command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+    #     )
+    # )
+
+
 async def do_merge_to_one(client: AsyncClientBase):
     """If more than 1 Sui coin, merge to one.
 
@@ -847,6 +905,7 @@ async def main():
         # await do_package(client_init)
         # await inspect_example(client_init)
         # await do_dry_run(client_init)
+        # await do_gasless_stablecoin_txn(client_init)
         # await do_merge_to_one(client_init)
         # await do_split_any_half(client_init)
         # await do_execute(client_init)
