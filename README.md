@@ -43,12 +43,12 @@ Future releases are in branches named `release_X.Y.Z`
 
 ## PyPi current
 
-**Release-1.2.0 - Released 2026-07-17**
+**Release-1.3.0 - Released 2026-08-07**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
 
-This release adds _PartyObject encoding_ support.
-In addition, _ZkSealConfig now supports apiKey/apiKeyName with automatic json config migration_.
+This release adds _gRPC and GraphQL Subscriptions_ support. In addition,
+_gasless stablecoin transactions_ (gRPC only) are now supported.
 
 ### FULL Documentation
 
