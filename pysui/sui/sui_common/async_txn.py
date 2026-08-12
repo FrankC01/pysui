@@ -337,10 +337,13 @@ class AsyncSuiTransaction(txbase):
         min_epoch = txn_expires_after or _cei.epoch
         pay_addy = self.signer_block.payer_address
         if gas_budget is None:
+            tx_meta: dict = {"sender": self.signer_block.sender_str}
+            if self.signer_block.sponsor_str:
+                tx_meta["gasSponsor"] = self.signer_block.sponsor_str
             _res = await self.client.execute(
                 command=cmd.SimulateTransactionKind(
                     tx_kind=tx_kind,
-                    tx_meta={"sender": pay_addy},
+                    tx_meta=tx_meta,
                     gas_selection=True,
                 ),
                 timeout=60.0,

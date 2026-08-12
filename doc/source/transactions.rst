@@ -221,6 +221,141 @@ current list of supported stablecoin types, refer to `Sui's official
 documentation <https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers>`_.
 
 
+Remote Sender/Sponsor Signing
+------------------------------
+
+A transaction sender and its gas sponsor are frequently different parties
+who only know each other's address. This section walks through three ways
+they can exchange a PTB and its signature(s) out-of-band (email, chat, or
+any other channel a temp file can stand in for), using the build/sign
+primitives described in `Build Methods`_ together with the JSON interchange
+format covered below in `Transaction JSON Interchange`_. See that section
+for the full JSON format and fidelity details -- it is not repeated here.
+
+The runnable example lives at ``temp_signing.py`` in the project root. It
+plays both sender and sponsor from a single ``PysuiConfiguration`` group and
+profile for convenience; the hand-off primitives themselves work identically
+across two entirely separate configurations.
+
+.. note::
+
+   Whichever party calls ``build()`` fixes the transaction's ``GasData``
+   shape (and therefore its final bytes) for that version of the
+   transaction. The other party should co-sign those exact bytes rather than
+   independently re-building -- two separate ``build()`` calls are not
+   guaranteed to produce byte-identical output, since gas price is resolved
+   fresh on every call.
+
+Helpers
+~~~~~~~~
+
+The three scenarios below share these helpers:
+
+.. code-block:: python
+
+   def _write_tempfile(*, text: str) -> Path:
+       """Write a string to a new temp file and return its path."""
+       handle = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+       handle.write(text)
+       handle.close()
+       return Path(handle.name)
+
+
+   def _read_tempfile(*, path: Path) -> str:
+       """Read back a string previously written by ``_write_tempfile``."""
+       return path.read_text()
+
+
+   def _sign_as(*, client: PysuiClient, address: str, tx_bytes: str) -> str:
+       """Sign already-compiled transaction bytes using one address's local keypair."""
+       keypair = client.config.active_group.keypair_for_address(address=address)
+       return keypair.new_sign_secure(tx_bytes)
+
+Scenario 1 -- Sender Initiates, No Shape Change
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The sender builds and signs; the sponsor co-signs the same ``tx_bytes`` with
+no rebuild:
+
+.. code-block:: python
+
+   txn = await client.transaction(initial_sender=sender, initial_sponsor=sponsor)
+   # ... add commands ...
+
+   tx_bytes = await txn.build(use_account_for_gas=False)
+   sig_sender = _sign_as(client=client, address=sender, tx_bytes=tx_bytes)
+
+   handoff = _write_tempfile(text=tx_bytes)
+   sponsor_bytes = _read_tempfile(path=handoff)
+   sig_sponsor = _sign_as(client=client, address=sponsor, tx_bytes=sponsor_bytes)
+
+   result = await client.execute(
+       command=cmd.ExecuteTransaction(
+           tx_bytestr=sponsor_bytes, sig_array=[sig_sender, sig_sponsor]
+       )
+   )
+
+Scenario 2 -- Sponsor Initiates, No Shape Change
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The mirror image of Scenario 1 -- the sponsor builds and signs first, and
+the sender co-signs:
+
+.. code-block:: python
+
+   txn = await client.transaction(initial_sender=sender, initial_sponsor=sponsor)
+   # ... add commands ...
+
+   tx_bytes = await txn.build(use_account_for_gas=False)
+   sig_sponsor = _sign_as(client=client, address=sponsor, tx_bytes=tx_bytes)
+
+   handoff = _write_tempfile(text=tx_bytes)
+   sender_bytes = _read_tempfile(path=handoff)
+   sig_sender = _sign_as(client=client, address=sender, tx_bytes=sender_bytes)
+
+   result = await client.execute(
+       command=cmd.ExecuteTransaction(
+           tx_bytestr=sender_bytes, sig_array=[sig_sponsor, sig_sender]
+       )
+   )
+
+Scenario 3 -- Sender Initiates, Sponsor Changes the GasData Shape
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Here the sponsor resolves gas from its account balance
+(``use_account_for_gas=True``) instead of the sender's assumed coin-object
+path, changing the ``GasData`` shape. Because the final shape isn't known
+until the sponsor builds, the initial hand-off must carry the *unbuilt*
+transaction as JSON (``export_json``/``from_json``); only the sponsor's
+resulting ``tx_bytes`` need to travel back for the sender to co-sign:
+
+.. code-block:: python
+
+   txn = await client.transaction(initial_sender=sender, initial_sponsor=sponsor)
+   # ... add commands ...
+
+   json_str = await txn.export_json(format="standard")
+   encoded_json = base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
+   handoff_out = _write_tempfile(text=encoded_json)
+
+   decoded_json = base64.b64decode(_read_tempfile(path=handoff_out)).decode("utf-8")
+   sponsor_txn, _info = await AsyncSuiTransaction.from_json(
+       json_str=decoded_json, client=client
+   )
+   tx_bytes = await sponsor_txn.build(use_account_for_gas=True)
+   sig_sponsor = _sign_as(client=client, address=sponsor, tx_bytes=tx_bytes)
+
+   handoff_back = _write_tempfile(text=tx_bytes)
+   sender_bytes = _read_tempfile(path=handoff_back)
+   sig_sender = _sign_as(client=client, address=sender, tx_bytes=sender_bytes)
+
+   result = await client.execute(
+       command=cmd.ExecuteTransaction(
+           tx_bytestr=sender_bytes, sig_array=[sig_sponsor, sig_sender]
+       )
+   )
+
+
 Transaction JSON Interchange
 ----------------------------
 
