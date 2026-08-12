@@ -214,7 +214,7 @@ class ZkClient:
         """Initialise the zkLogin client.
 
         :param config: ZkSeal configuration providing provider endpoints and network group.
-        :type config: ZkSealConfig
+        :type config: ~pysui.zklogin_seal.config.ZkSealConfig
         :param salt: 128-bit decimal user salt; generated randomly if omitted. Store for address stability.
         :type salt: Optional[str], optional
         :raises ImportError: If pysui-crypto is not installed.
