@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - [bug](https://github.com/FrankC01/pysui/issues/401) Fix sender assumption in _build_txn_data_address_balance()
+- [bug](https://github.com/FrankC01/pysui/issues/402) address_balance withdrawals not accounted for when use_account_for_gas=True
 - Fixed Sphinx doc x-ref issues
 
 ### Changed
