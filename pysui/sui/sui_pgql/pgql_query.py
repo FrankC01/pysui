@@ -3496,11 +3496,11 @@ class GetDynamicFieldsSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetDynamicFieldsSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Return a query for dynamic fields."""
-        qres = schema.Query.object(address=self.object_id)
+        qres = schema.Query.address(address=self.object_id)
         qres = qres.select(
-            schema.Object.address.alias("parent_object_id"), schema.Object.version
+            schema.Address.address.alias("parent_object_id")
         )
-        dfield_connection = schema.Object.dynamicFields
+        dfield_connection = schema.Address.dynamicFields
         if self.next_page_token:
             dfield_connection(after=self.next_page_token.decode())
 
@@ -3602,7 +3602,7 @@ class GetDynamicFieldsSC(PGQL_QueryNode):
 
         @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetDynamicFieldsSC._encode")
         def _encode(in_data: dict) -> sui_prot.ListDynamicFieldsResponse:
-            obj = in_data.get("object") or {}
+            obj = in_data.get("address") or {}
             parent_id: str = obj.get("parent_object_id", "")
             dyn_conn = obj.get("dynamicFields") or {}
             cursor = dyn_conn.get("cursor") or {}
@@ -3688,10 +3688,28 @@ class GetDynamicFieldsSC(PGQL_QueryNode):
                         contents_bcs_b64=child_contents.get("child_contents_bcs"),
                         contents_json=child_contents.get("child_contents_json"),
                     )
+                    field_contents = node.get("field_contents") or {}
+                    field_object_type = (field_contents.get("field_contents_layout") or {}).get("field_type_layout")
+                    field_prev_tx = node.get("field_prev_tx") or {}
+                    field_obj = _build_dynfield_object(
+                        obj_id=node.get("field_address"),
+                        version=node.get("field_version"),
+                        digest=node.get("field_digest"),
+                        bcs_b64=node.get("field_bcs"),
+                        has_public_transfer=node.get("field_has_public_transfer"),
+                        storage_rebate=node.get("field_storage_rebate"),
+                        owner_dict=node.get("field_owner"),
+                        prev_tx_digest=field_prev_tx.get("field_prev_tx_digest"),
+                        object_type=field_object_type,
+                        contents_bcs_b64=field_contents.get("field_contents_bcs"),
+                        contents_json=field_contents.get("field_contents_json"),
+                    )
                     fields.append(
                         sui_prot.DynamicField(
                             kind=kind,
                             parent=parent_id,
+                            field_id=node.get("field_address"),
+                            field_object=field_obj,
                             child_id=field_value.get("child_address"),
                             child_object=child_obj,
                             name=name_bcs,

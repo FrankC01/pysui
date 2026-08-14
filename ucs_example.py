@@ -300,9 +300,9 @@ async def do_dynamics(client: AsyncClientBase):
     This is test ID, replace to run.
     """
     handle_result(
-        await client.execute(
+        await client.execute_for_all(
             command=cmd.GetDynamicFields(
-                object_id="0x73d05d62c18d9374e3ea529e8e0ed6161da1a141a94d3f76ae3fe4e99356db75"
+                object_id="0x71462e6861c8347cbb52fd0ab9f4c0603ceb7cec959d97afd4075649cf44e320"
             )
         )
     )

@@ -347,6 +347,17 @@ The following SuiCommands require paging to retrieve all results where the
 protocol column is ``True``.  A ``—`` means that protocol returns all results
 in a single call.
 
+.. caution::
+
+   **Pagination consistency.** The data backing a paginated command (dynamic
+   fields, coin sets, checkpoints, etc.) is live and can change between page
+   requests. If the underlying set mutates mid-walk, a paginated result
+   (manual iteration or :meth:`execute_for_all`) may contain duplicate
+   entries — the same object reappearing at a newer version — rather than a
+   single consistent snapshot. pysui does not detect or reconcile this across
+   pages; callers that need a consistent view should dedupe by object ID and
+   keep the highest ``version`` on collision.
+
 .. list-table::
    :widths: 52 12 12
    :header-rows: 1
