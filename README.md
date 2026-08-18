@@ -14,8 +14,6 @@ Python Client SDK for Sui blockchain
 
 ## pysui SDK install
 
-### With Rust on machine
-
 `pip install pysui` if first time or
 `pip install -U pysui` if upgrading.
 
@@ -26,29 +24,22 @@ For zkLogin and SEAL features, install with the optional extra features
 
 ### Without Rust on machine
 
-1. Fetch the latest [pysui-fastcrypto](https://github.com/FrankC01/pysui-fastcrypto) wheel from the release assets, unzip and `pip` install it
-2. `pip install pysui`
-
 For zkLogin and SEAL features
 
-1. Fetch the pysui-fastcrypto wheel as noted above
-2. Fetch the latest [pysui-crypto](https://github.com/Suitters/pysui-crypto) wheel from the release assets and `pip` install it
-3. `pip install pysui[zklogin-seal]`
+1. Fetch the latest [pysui-crypto](https://github.com/Suitters/pysui-crypto) wheel from the release assets and `pip` install it
+2. `pip install pysui[zklogin-seal]`
 
 ## pysui SDK current (github)
 
-**Release-1.3.0**
+**Release-1.4.0**
 
 Future releases are in branches named `release_X.Y.Z`
 
 ## PyPi current
 
-**Release-1.3.0 - Released 2026-08-07**
+**Release-1.4.0 - Released 2026-08-07**
 
 - [Latest PyPi Version](https://pypi.org/project/pysui/)
-
-This release adds _gRPC and GraphQL Subscriptions_ support. In addition,
-_gasless stablecoin transactions_ (gRPC only) are now supported.
 
 ### FULL Documentation
 
