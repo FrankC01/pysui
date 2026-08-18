@@ -55,7 +55,7 @@ async def do_coins_for_type(client: AsyncClientBase):
         await client.execute(
             command=cmd.GetCoins(
                 owner=client.config.active_address,
-                coin_type="0x2::coin::Coin<0xb0eaf410ca6c030f450fb0ab96e497c6007c7284f688674e78aedd1c495bd760::pysui_token::PYSUI_TOKEN>",
+                coin_type="0x2::coin::Coin<0x2::sui::SUI>",
             )
         )
     )
@@ -79,7 +79,9 @@ async def do_gas(client: AsyncClientBase):
     Returns a single page — the owner may have more coins than shown here.
     See do_all_gas() for full accumulation across all pages.
     """
-    result = handle_result(await client.execute(command=cmd.GetGas(owner=client.config.active_address)))
+    result = handle_result(
+        await client.execute(command=cmd.GetGas(owner=client.config.active_address))
+    )
     if result.is_ok():
         print(f"Coins this page: {len(result.result_data.objects)}")
         if result.result_data.next_page_token:
@@ -99,7 +101,9 @@ async def do_all_gas(client: AsyncClientBase):
     all_coins = []
     next_page_token = None
     while True:
-        result = await client.execute(command=cmd.GetGas(owner=owner, next_page_token=next_page_token))
+        result = await client.execute(
+            command=cmd.GetGas(owner=owner, next_page_token=next_page_token)
+        )
         if not result.is_ok():
             print(f"Error: {result.result_string}")
             break
@@ -120,18 +124,28 @@ async def do_all_gas_alt(client: AsyncClientBase):
     The client handles paging internally — accumulating all pages and returning
     a single result whose result_data contains the full coin list.
     """
-    result = handle_result(await client.execute_for_all(command=cmd.GetGas(owner=client.config.active_address)))
+    result = handle_result(
+        await client.execute_for_all(
+            command=cmd.GetGas(owner=client.config.active_address)
+        )
+    )
     if result.is_ok():
         print(f"Total coins: {len(result.result_data.objects)}")
-        print(f"Total mists: {sum([int(x.balance) for x in result.result_data.objects])}")
+        print(
+            f"Total mists: {sum([int(x.balance) for x in result.result_data.objects])}"
+        )
 
 
 async def do_gas_ids(client: AsyncClientBase):
     """Fetch coins by the ids."""
-    result = await client.execute_for_all(command=cmd.GetGas(owner=client.config.active_address))
+    result = await client.execute_for_all(
+        command=cmd.GetGas(owner=client.config.active_address)
+    )
     if result.is_ok() and result.result_data.objects:
         cids = [x.object_id for x in result.result_data.objects]
-        result = handle_result(await client.execute(command=cmd.GetMultipleObjects(object_ids=cids)))
+        result = handle_result(
+            await client.execute(command=cmd.GetMultipleObjects(object_ids=cids))
+        )
     elif result.is_err():
         print(f"Error {result.result_string}")
     else:
@@ -147,7 +161,9 @@ async def do_address_balance(client: AsyncClientBase):
     """Fetch coin balance for owner."""
     handle_result(
         await client.execute(
-            command=cmd.GetAddressCoinBalance(owner=client.config.active_address, coin_type="0x2::sui::SUI")
+            command=cmd.GetAddressCoinBalance(
+                owner=client.config.active_address, coin_type="0x2::sui::SUI"
+            )
         )
     )
 
@@ -157,7 +173,9 @@ async def do_address_balances(client: AsyncClientBase):
 
     Demonstrates paging as well.
     """
-    result = await client.execute(command=cmd.GetAddressCoinBalances(owner=client.config.active_address))
+    result = await client.execute(
+        command=cmd.GetAddressCoinBalances(owner=client.config.active_address)
+    )
     handle_result(result)
     if result.is_ok():
         while result.result_data.next_page_token:
@@ -175,7 +193,9 @@ async def do_object(client: AsyncClientBase):
     """Fetch specific object data."""
     handle_result(
         await client.execute(
-            command=cmd.GetObject(object_id="0x3aab253af15cc6e116a4058f6caf0d87dc3df8fdf29c0704a4a86649237094a3")
+            command=cmd.GetObject(
+                object_id="0x3aab253af15cc6e116a4058f6caf0d87dc3df8fdf29c0704a4a86649237094a3"
+            )
         )
     )
 
@@ -187,7 +207,9 @@ async def do_object_content(client: AsyncClientBase):
     """
     handle_result(
         await client.execute(
-            command=cmd.GetObjectContent(object_id="0x47f04c2327b45dfa6cb64d792ef53a5b7df8b0bf7ba3ef809a3de30f6fe26165")
+            command=cmd.GetObjectContent(
+                object_id="0x47f04c2327b45dfa6cb64d792ef53a5b7df8b0bf7ba3ef809a3de30f6fe26165"
+            )
         )
     )
 
@@ -195,14 +217,18 @@ async def do_object_content(client: AsyncClientBase):
 async def do_objects(client: AsyncClientBase):
     """Fetch all objects held by owner using execute_for_all()."""
     result = handle_result(
-        await client.execute_for_all(command=cmd.GetObjectsOwnedByAddress(owner=client.config.active_address))
+        await client.execute_for_all(
+            command=cmd.GetObjectsOwnedByAddress(owner=client.config.active_address)
+        )
     )
 
 
 async def do_party_objects(client: AsyncClientBase):
     """Fetch all party objects held by owner using execute_for_all()."""
     result = handle_result(
-        await client.execute_for_all(command=cmd.GetPartyObjects(owner=client.config.active_address))
+        await client.execute_for_all(
+            command=cmd.GetPartyObjects(owner=client.config.active_address)
+        )
     )
 
 
@@ -225,7 +251,9 @@ async def do_multiple_object_content(client: AsyncClientBase):
     handle_result(
         await client.execute(
             command=cmd.GetMultipleObjectContent(
-                object_ids=["0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"]
+                object_ids=[
+                    "0x7658a888e3f2c9c4e80b6ded17f07b4f2a6621195cdd74743a815e1f526969de"
+                ]
             )
         )
     )
@@ -241,7 +269,11 @@ async def do_multiple_object_versions(client: AsyncClientBase):
             "version": 43,
         }
     ]
-    handle_result(await client.execute(command=cmd.GetMultiplePastObjects(for_versions=object_versions)))
+    handle_result(
+        await client.execute(
+            command=cmd.GetMultiplePastObjects(for_versions=object_versions)
+        )
+    )
 
 
 async def do_objects_for(client: AsyncClientBase):
@@ -268,8 +300,10 @@ async def do_dynamics(client: AsyncClientBase):
     This is test ID, replace to run.
     """
     handle_result(
-        await client.execute(
-            command=cmd.GetDynamicFields(object_id="0xc9475f2d0fac3ad3dcc8cb0740a760dcd4bd5ba4475ab434b2d1a7a2918d8a69")
+        await client.execute_for_all(
+            command=cmd.GetDynamicFields(
+                object_id="0x71462e6861c8347cbb52fd0ab9f4c0603ceb7cec959d97afd4075649cf44e320"
+            )
         )
     )
 
@@ -282,7 +316,11 @@ async def do_chain_id(client: AsyncClientBase):
 async def do_tx(client: AsyncClientBase):
     """Fetch specific transaction by its digest."""
     handle_result(
-        await client.execute(command=cmd.GetTransaction(digest="9hbKXCZgvzXMTSH5pPQnsiY5tHp2ry9NWvUPRNtovaSC"))
+        await client.execute(
+            command=cmd.GetTransaction(
+                digest="8mP8YpKYPoS84sB4JGg5mrfahq55qwpMxa5KbaBF6nFT"
+            )
+        )
     )
 
 
@@ -303,13 +341,21 @@ async def do_txs(client: AsyncClientBase):
 async def do_tx_kind(client: AsyncClientBase):
     """Fetch the ProgrammableTransaction kind from a transaction."""
     handle_result(
-        await client.execute(command=cmd.GetTransactionKind(digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"))
+        await client.execute(
+            command=cmd.GetTransactionKind(
+                digest="4oZJ5bHgtmE6vHwALdQWVsQxor5tW2jWwUigKQvJNbBe"
+            )
+        )
     )
 
 
 async def do_staked_sui(client: AsyncClientBase):
     """Fetch owner's staked coins."""
-    handle_result(await client.execute(command=cmd.GetDelegatedStakes(owner=client.config.active_address)))
+    handle_result(
+        await client.execute(
+            command=cmd.GetDelegatedStakes(owner=client.config.active_address)
+        )
+    )
 
 
 async def do_latest_cp(client: AsyncClientBase):
@@ -323,7 +369,9 @@ async def do_sequence_cp(client: AsyncClientBase):
     if result.is_ok():
         handle_result(
             await client.execute(
-                command=cmd.GetCheckpointBySequence(sequence_number=result.result_data.checkpoint.sequence_number)
+                command=cmd.GetCheckpointBySequence(
+                    sequence_number=result.result_data.checkpoint.sequence_number
+                )
             )
         )
     else:
@@ -335,7 +383,11 @@ async def do_digest_cp(client: AsyncClientBase):
     result = await client.execute(command=cmd.GetLatestCheckpoint())
     if result.is_ok():
         handle_result(
-            await client.execute(command=cmd.GetCheckpointByDigest(digest=result.result_data.checkpoint.digest))
+            await client.execute(
+                command=cmd.GetCheckpointByDigest(
+                    digest=result.result_data.checkpoint.digest
+                )
+            )
         )
     else:
         print(result.result_string)
@@ -360,7 +412,11 @@ async def do_nameservice(client: AsyncClientBase):
 
 async def do_owned_nameservice(client: AsyncClientBase):
     """Fetch owned name services by address."""
-    handle_result(await client.execute(command=cmd.GetNameServiceNames(owner=client.config.active_address)))
+    handle_result(
+        await client.execute(
+            command=cmd.GetNameServiceNames(owner=client.config.active_address)
+        )
+    )
 
 
 async def do_all_validators(client: AsyncClientBase):
@@ -415,9 +471,9 @@ async def do_func(client: AsyncClientBase):
     """
     result = await client.execute(
         command=cmd.GetFunction(
-            package="0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1",
-            module_name="contra",
-            function_name="register",
+            package="0x3",
+            module_name="sui_system",
+            function_name="request_add_stake_mul_coin",
         )
     )
     if result.is_ok():
@@ -478,17 +534,25 @@ async def do_package_versions(client: AsyncClientBase):
 
     Change package_address to the storage address of any version of the target package.
     """
-    handle_result(await client.execute(command=cmd.GetPackageVersions(package_address="0x2")))
+    handle_result(
+        await client.execute(command=cmd.GetPackageVersions(package_address="0x2"))
+    )
 
 
 async def do_dry_run(client: AsyncClientBase):
     """Execute a simulate (dry run)."""
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    await txer.transfer_objects(transfers=[scres], recipient=client.config.active_address)
+    await txer.transfer_objects(
+        transfers=[scres], recipient=client.config.active_address
+    )
     tx_data = await txer.transaction_data()
 
-    handle_result(await client.execute(command=cmd.SimulateTransaction(tx_bytestr=tx_data.serialize())))
+    handle_result(
+        await client.execute(
+            command=cmd.SimulateTransaction(tx_bytestr=tx_data.serialize())
+        )
+    )
 
 
 async def do_dry_run_txkind(txer: AsyncSuiTransaction):
@@ -507,7 +571,9 @@ async def inspect_example(client: AsyncClientBase):
     """Execute a dryrun just on the TransactionKind of a transaction."""
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[1000000000])
-    await txer.transfer_objects(transfers=[scres], recipient=client.config.active_address)
+    await txer.transfer_objects(
+        transfers=[scres], recipient=client.config.active_address
+    )
     await do_dry_run_txkind(txer)
 
 
@@ -568,12 +634,20 @@ async def do_merge_to_one(client: AsyncClientBase):
     This takes the highest balanced coin and reserves it for gas, which
     is also the target to merge to.
     """
-    result = await client.execute(command=cmd.GetCoins(owner=client.config.active_address))
+    result = await client.execute(
+        command=cmd.GetCoins(owner=client.config.active_address)
+    )
     if result.is_ok() and len(result.result_data.objects) > 1:
-        d_coins = sorted(result.result_data.objects, key=lambda p: p.balance, reverse=True)
+        d_coins = sorted(
+            result.result_data.objects, key=lambda p: p.balance, reverse=True
+        )
         txer: AsyncSuiTransaction = await client.transaction()
         await txer.merge_coins(merge_to=txer.gas, merge_from=d_coins[1:])
-        handle_result(await client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign())))
+        handle_result(
+            await client.execute(
+                command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+            )
+        )
     else:
         print("Only one coin exists for this address")
 
@@ -583,27 +657,45 @@ async def do_split_any_half(client: AsyncClientBase):
 
     This will only run if there is more than 1 coin in wallet.
     """
-    result = await client.execute_for_all(command=cmd.GetGas(owner=client.config.active_address))
+    result = await client.execute_for_all(
+        command=cmd.GetGas(owner=client.config.active_address)
+    )
     if result.is_ok() and len(result.result_data.objects) > 1:
         amount = int(int(result.result_data.objects[0].balance) / 2)
         txer: AsyncSuiTransaction = await client.transaction()
-        scres = await txer.split_coin(coin=result.result_data.objects[0], amounts=[amount])
-        await txer.transfer_objects(transfers=[scres], recipient=client.config.active_address)
-        handle_result(await client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign())))
+        scres = await txer.split_coin(
+            coin=result.result_data.objects[0], amounts=[amount]
+        )
+        await txer.transfer_objects(
+            transfers=[scres], recipient=client.config.active_address
+        )
+        handle_result(
+            await client.execute(
+                command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+            )
+        )
 
 
 async def do_execute(client: AsyncClientBase):
     """Splits an amount from active address account and sends to other account."""
-    recipient: str = "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28"
+    recipient: str = (
+        "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28"
+    )
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[300_000_000])
     await txer.transfer_objects(transfers=[scres], recipient=recipient)
-    handle_result(await client.execute(command=cmd.ExecuteTransaction(**await txer.build_and_sign())))
+    handle_result(
+        await client.execute(
+            command=cmd.ExecuteTransaction(**await txer.build_and_sign())
+        )
+    )
 
 
 async def do_verify_tx_sig(client: AsyncClientBase):
     """Build and sign a simple transaction, then verify the signature without executing."""
-    recipient: str = "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28"
+    recipient: str = (
+        "0xa9fe7b9cab7ce187c768a9b16e95dbc5953a99ec461067a73a6b1c4288873e28"
+    )
     txer: AsyncSuiTransaction = await client.transaction()
     scres = await txer.split_coin(coin=txer.gas, amounts=[300_000_000])
     await txer.transfer_objects(transfers=[scres], recipient=recipient)
@@ -736,7 +828,9 @@ async def do_sui_coin_to_account(client: AsyncClientBase):
     txer: AsyncSuiTransaction = await client.transaction()
     # Pull amount from transaction Gas
     scres = await txer.split_coin(coin=txer.gas, amounts=[1_000_000_000])
-    await txer.fund_address_accumulator(funds=scres, recipient=client.config.active_address)
+    await txer.fund_address_accumulator(
+        funds=scres, recipient=client.config.active_address
+    )
     # Uncomment to simulate (dry run)
     handle_result(
         await client.execute(
@@ -760,7 +854,9 @@ async def do_account_to_sui_coin(client: AsyncClientBase):
     # If set_balance is None, will use the total account balance
     set_balance: int = 1_000
     # Get the current balance
-    curr_balance_res = await client.execute(command=cmd.GetAddressCoinBalance(owner=client.config.active_address))
+    curr_balance_res = await client.execute(
+        command=cmd.GetAddressCoinBalance(owner=client.config.active_address)
+    )
     # Validate existing funds exist.
     if curr_balance_res.is_ok():
         if curr_balance_res.result_data.balance.address_balance is None:
@@ -774,8 +870,12 @@ async def do_account_to_sui_coin(client: AsyncClientBase):
                 )
         # Enable the transaction to use account for gas payments.
         txer: AsyncSuiTransaction = await client.transaction()
-        coin = await txer.coin_from_address_accumulator(source=FundsSource.SENDER, amount=set_balance)
-        await txer.transfer_objects(transfers=[coin], recipient=client.config.active_address)
+        coin = await txer.coin_from_address_accumulator(
+            source=FundsSource.SENDER, amount=set_balance
+        )
+        await txer.transfer_objects(
+            transfers=[coin], recipient=client.config.active_address
+        )
         # Uncomment to dry run — gas_selection=True estimates using address balance for gas
         handle_result(
             await client.execute(

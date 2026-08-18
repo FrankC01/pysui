@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-18
+
+### Added
+
+- Update docs to demonstrate sponsored transaction
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/403) Fixed GraphQL DynamicField query when owning object is 'wrapped'
+- [bug](https://github.com/FrankC01/pysui/issues/401) Fix sender assumption in _build_txn_data_address_balance()
+- [bug](https://github.com/FrankC01/pysui/issues/402) address_balance withdrawals not accounted for when use_account_for_gas=True
+- Fixed Sphinx doc x-ref issues
+
+### Changed
+
+- Bumped pysui-fastcrypto to >= 0.7.6
+
+### Removed
+
 ## [1.3.0] - 2026-08-07
 
 ### Added

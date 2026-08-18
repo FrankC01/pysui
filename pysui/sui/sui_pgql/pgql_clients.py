@@ -283,14 +283,18 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         return AsyncSuiTransaction(**kwargs)
 
     @instrumented("gql.serial_executor")
-    async def serial_executor(self, *, options: "ExecutorOptions") -> "SerialExecutor":
+    async def serial_executor(
+        self,
+        *,
+        options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions",
+    ) -> "pysui.sui.sui_common.executors.serial_executor.SerialExecutor":
         """Async factory: create and initialize a SerialExecutor.
 
         Performs coin selection, merging, and gas state seeding before returning
         a ready-to-use executor with the background coroutine running.
 
-        :param options: Full executor parameterization via ExecutorOptions
-        :return: Initialized SerialExecutor
+        :param options: Full executor parameterization via :class:`~pysui.sui.sui_common.executors.exec_types.ExecutorOptions`
+        :return: Initialized :class:`~pysui.sui.sui_common.executors.serial_executor.SerialExecutor`
         """
         from pysui.sui.sui_common.executors.serial_executor import SerialExecutor
 
@@ -299,14 +303,18 @@ class GqlProtocolClient(AsyncClientBase, BaseSuiGQLClient):
         return se
 
     @instrumented("gql.parallel_executor")
-    async def parallel_executor(self, *, options: "ExecutorOptions") -> "ParallelExecutor":
+    async def parallel_executor(
+        self,
+        *,
+        options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions",
+    ) -> "pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor":
         """Async factory: create and initialize a ParallelExecutor.
 
         Performs coin selection and gas state seeding before returning
         a ready-to-use executor with the background coroutine running.
 
-        :param options: Full executor parameterization via ExecutorOptions
-        :return: Initialized ParallelExecutor
+        :param options: Full executor parameterization via :class:`~pysui.sui.sui_common.executors.exec_types.ExecutorOptions`
+        :return: Initialized :class:`~pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor`
         """
         from pysui.sui.sui_common.executors.parallel_executor import ParallelExecutor
 

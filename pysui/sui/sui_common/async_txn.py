@@ -304,6 +304,35 @@ class AsyncSuiTransaction(txbase):
         """Return a base64 string for dry-running the transaction."""
         return base64.b64encode((await self.raw_kind()).serialize()).decode()
 
+    @sync_instrumented(
+        "pysui.sui.sui_common.async_txn.AsyncSuiTransaction._sum_address_withdrawal_amounts"
+    )
+    def _sum_address_withdrawal_amounts(self, inputs: dict) -> int:
+        """Sum FundsWithdrawal amounts the PTB itself issues against the gas payer's SUI balance.
+
+        Only counts withdrawals matching the gas coin type (SUI) and the same
+        source (sender or sponsor) as the gas payer, since only those draw
+        down the same accumulator balance being reserved for gas.
+
+        :param inputs: The builder's resolved inputs (BuilderArg -> CallArg)
+        :type inputs: dict
+        :return: Sum of matching FundsWithdrawal amounts
+        :rtype: int
+        """
+        payer_source = "SPONSOR" if self.signer_block.sponsor_str else "SENDER"
+        gas_type_str = bcs.StructTag.sui_coin().type_tag_to_str()
+        total = 0
+        for call_arg in inputs.values():
+            if call_arg.enum_name != "FundsWithdrawal":
+                continue
+            wdt: bcs.FundsWithdrawal = call_arg.value
+            if wdt.Source.enum_name != payer_source:
+                continue
+            if wdt.Type_.value.type_tag_to_str() != gas_type_str:
+                continue
+            total += wdt.Reservation.value
+        return total
+
     @instrumented("ptb._build_txn_data_address_balance")
     async def _build_txn_data_address_balance(
         self,
@@ -336,11 +365,15 @@ class AsyncSuiTransaction(txbase):
         chain_id = _chain_res.result_data
         min_epoch = txn_expires_after or _cei.epoch
         pay_addy = self.signer_block.payer_address
+        addr_withdrawal_sum = self._sum_address_withdrawal_amounts(clone.inputs)
         if gas_budget is None:
+            tx_meta: dict = {"sender": self.signer_block.sender_str}
+            if self.signer_block.sponsor_str:
+                tx_meta["gasSponsor"] = self.signer_block.sponsor_str
             _res = await self.client.execute(
                 command=cmd.SimulateTransactionKind(
                     tx_kind=tx_kind,
-                    tx_meta={"sender": pay_addy},
+                    tx_meta=tx_meta,
                     gas_selection=True,
                 ),
                 timeout=60.0,
@@ -360,7 +393,10 @@ class AsyncSuiTransaction(txbase):
         payment = (
             [
                 _build_coin_reservation_ref(
-                    gas_budget + gas_source_draw, _cei.epoch, pay_addy, chain_id
+                    gas_budget + gas_source_draw + addr_withdrawal_sum,
+                    _cei.epoch,
+                    pay_addy,
+                    chain_id,
                 )
             ]
             if uses_gas_coin

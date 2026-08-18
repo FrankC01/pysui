@@ -221,6 +221,265 @@ current list of supported stablecoin types, refer to `Sui's official
 documentation <https://docs.sui.io/develop/transaction-payment/gasless-stablecoin-transfers>`_.
 
 
+Remote Sender/Sponsor Signing
+------------------------------
+
+A transaction sender and its gas sponsor are frequently different parties
+who only know each other's address. This section walks through three ways
+they can exchange a PTB and its signature(s) out-of-band (email, chat, or
+any other channel a temp file can stand in for), using the build/sign
+primitives described in `Build Methods`_ together with the JSON interchange
+format covered below in `Transaction JSON Interchange`_. See that section
+for the full JSON format and fidelity details -- it is not repeated here.
+
+Both sender and sponsor are played from a single ``PysuiConfiguration``
+group and profile for convenience in the examples below; the hand-off
+primitives themselves work identically across two entirely separate
+configurations.
+
+.. note::
+
+   Whichever party calls ``build()`` fixes the transaction's ``GasData``
+   shape (and therefore its final bytes) for that version of the
+   transaction. The other party should co-sign those exact bytes rather than
+   independently re-building -- two separate ``build()`` calls are not
+   guaranteed to produce byte-identical output, since gas price is resolved
+   fresh on every call.
+
+Both examples below assume the sender and sponsor addresses are already
+known. Replace the placeholders with real addresses before running. The
+snippets below also assume these imports:
+
+.. code-block:: python
+
+   import base64
+   import json
+   import tempfile
+   from pathlib import Path
+
+   from pysui import ExecuteTransaction, GetGas, VerifyTransactionSignature
+   from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
+
+   SENDER_ADDRESS = "0x.."  # Replace with valid address
+   SPONSOR_ADDRESS = "0x.."  # Replace with valid address
+   SPLIT_AMOUNT = 10_000_000
+
+Helpers
+~~~~~~~~
+
+The three scenarios below share these helpers:
+
+.. code-block:: python
+
+   def _write_tempfile(*, text: str) -> Path:
+       """Write a string to a new temp file and return its path."""
+       handle = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+       handle.write(text)
+       handle.close()
+       return Path(handle.name)
+
+
+   def _read_tempfile(*, path: Path) -> str:
+       """Read back a string previously written by ``_write_tempfile``."""
+       return path.read_text()
+
+
+   def _sign_as(*, client: PysuiClient, address: str, tx_bytes: str) -> str:
+       """Sign already-compiled transaction bytes using one address's local keypair."""
+       keypair = client.config.active_group.keypair_for_address(address=address)
+       return keypair.new_sign_secure(tx_bytes)
+
+
+   async def _split_and_self_transfer(
+       *, txn: AsyncSuiTransaction, client: PysuiClient, sender: str
+   ) -> None:
+       """Add a split-coin plus self-transfer to the transaction.
+
+       Splits ``SPLIT_AMOUNT`` off one of the sender's coins and transfers
+       the new coin back to the sender -- standing in for whatever real
+       commands the PTB would carry.
+       """
+       # Fetch one of the sender's coins to split from.
+       gas_result = await client.execute(command=GetGas(owner=sender))
+       gas_coin = gas_result.result_data.objects[0]
+       # Split off SPLIT_AMOUNT and transfer the new coin back to the sender.
+       split_result = await txn.split_coin(coin=gas_coin, amounts=[SPLIT_AMOUNT])
+       await txn.transfer_objects(transfers=[split_result], recipient=sender)
+
+Scenario 1 -- Sender Initiates, No Shape Change
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The sender builds and signs; the sponsor co-signs the same ``tx_bytes`` with
+no rebuild:
+
+.. code-block:: python
+
+   sender = SENDER_ADDRESS
+   sponsor = SPONSOR_ADDRESS
+
+   txn = await client.transaction(initial_sender=sender, initial_sponsor=sponsor)
+   # Add whatever commands the PTB actually needs; here a split-coin plus
+   # self-transfer stands in for real transaction commands.
+   await _split_and_self_transfer(txn=txn, client=client, sender=sender)
+
+   # GasData is resolved once here, by the sender, and never changes again
+   # -- the sponsor below co-signs these exact bytes rather than rebuilding.
+   tx_bytes = await txn.build(use_account_for_gas=False)
+   sig_sender = _sign_as(client=client, address=sender, tx_bytes=tx_bytes)
+
+   # Hand off both the built bytes and the sender's signature together --
+   # whichever party ends up calling execute() needs both, not just the
+   # bytes, since it can't recover a signature it never received.
+   handoff = _write_tempfile(
+       text=json.dumps({"tx_bytes": tx_bytes, "signature": sig_sender})
+   )
+   payload = json.loads(_read_tempfile(path=handoff))
+   sponsor_bytes = payload["tx_bytes"]
+   sig_sender = payload["signature"]
+
+   # Security gate: verify the sender's signature actually covers these
+   # bytes before the sponsor co-signs and pays gas for them. Also check
+   # for transport/RPC errors, not just an invalid signature.
+   verify_result = await client.execute(
+       command=VerifyTransactionSignature(
+           message=sponsor_bytes, signature=sig_sender, author=sender
+       )
+   )
+   if verify_result.is_err() or not verify_result.result_data.is_valid:
+       raise ValueError("Sender signature failed verification")
+
+   sig_sponsor = _sign_as(client=client, address=sponsor, tx_bytes=sponsor_bytes)
+
+   # Both signatures cover the same bytes, so either party can submit.
+   result = await client.execute(
+       command=ExecuteTransaction(
+           tx_bytestr=sponsor_bytes, sig_array=[sig_sender, sig_sponsor]
+       )
+   )
+   if result.is_err():
+       raise ValueError(f"Execution failed: {result.result_string()}")
+
+Scenario 2 -- Sponsor Initiates, No Shape Change
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The mirror image of Scenario 1 -- the sponsor builds and signs first, and
+the sender co-signs:
+
+.. code-block:: python
+
+   sender = SENDER_ADDRESS
+   sponsor = SPONSOR_ADDRESS
+
+   txn = await client.transaction(initial_sender=sender, initial_sponsor=sponsor)
+   # Add whatever commands the PTB actually needs; here a split-coin plus
+   # self-transfer stands in for real transaction commands.
+   await _split_and_self_transfer(txn=txn, client=client, sender=sender)
+
+   # GasData is resolved once here, by the sponsor, and never changes again
+   # -- the sender below co-signs these exact bytes rather than rebuilding.
+   tx_bytes = await txn.build(use_account_for_gas=False)
+   sig_sponsor = _sign_as(client=client, address=sponsor, tx_bytes=tx_bytes)
+
+   # Hand off both the built bytes and the sponsor's signature together --
+   # whichever party ends up calling execute() needs both, not just the
+   # bytes, since it can't recover a signature it never received.
+   handoff = _write_tempfile(
+       text=json.dumps({"tx_bytes": tx_bytes, "signature": sig_sponsor})
+   )
+   payload = json.loads(_read_tempfile(path=handoff))
+   sender_bytes = payload["tx_bytes"]
+   sig_sponsor = payload["signature"]
+
+   # Security gate: verify the sponsor's signature actually covers these
+   # bytes before the sender co-signs -- the sender is the final owner of
+   # these coins and should not sign blindly. Also check for transport/RPC
+   # errors, not just an invalid signature.
+   verify_result = await client.execute(
+       command=VerifyTransactionSignature(
+           message=sender_bytes, signature=sig_sponsor, author=sponsor
+       )
+   )
+   if verify_result.is_err() or not verify_result.result_data.is_valid:
+       raise ValueError("Sponsor signature failed verification")
+
+   sig_sender = _sign_as(client=client, address=sender, tx_bytes=sender_bytes)
+
+   # Both signatures cover the same bytes, so either party can submit.
+   result = await client.execute(
+       command=ExecuteTransaction(
+           tx_bytestr=sender_bytes, sig_array=[sig_sponsor, sig_sender]
+       )
+   )
+   if result.is_err():
+       raise ValueError(f"Execution failed: {result.result_string()}")
+
+Scenario 3 -- Sender Initiates, Sponsor Changes the GasData Shape
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Here the sponsor resolves gas from its account balance
+(``use_account_for_gas=True``) instead of the sender's assumed coin-object
+path, changing the ``GasData`` shape. Because the final shape isn't known
+until the sponsor builds, the initial hand-off must carry the *unbuilt*
+transaction as JSON (``export_json``/``from_json``); only the sponsor's
+resulting ``tx_bytes`` need to travel back for the sender to co-sign:
+
+.. code-block:: python
+
+   sender = SENDER_ADDRESS
+   sponsor = SPONSOR_ADDRESS
+
+   txn = await client.transaction(initial_sender=sender, initial_sponsor=sponsor)
+   # Add whatever commands the PTB actually needs; here a split-coin plus
+   # self-transfer stands in for real transaction commands.
+   await _split_and_self_transfer(txn=txn, client=client, sender=sender)
+
+   # The final GasData shape isn't known until the sponsor builds, so the
+   # hand-off carries the unbuilt transaction as JSON rather than bytes.
+   json_str = txn.export_json(format="standard")
+   encoded_json = base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
+   handoff_out = _write_tempfile(text=encoded_json)
+
+   # Sponsor rebuilds from the JSON and resolves gas from its own account
+   # balance instead of the sender's assumed coin-object path.
+   decoded_json = base64.b64decode(_read_tempfile(path=handoff_out)).decode("utf-8")
+   sponsor_txn, _info = await AsyncSuiTransaction.from_json(
+       json_str=decoded_json, client=client
+   )
+   tx_bytes = await sponsor_txn.build(use_account_for_gas=True)
+   sig_sponsor = _sign_as(client=client, address=sponsor, tx_bytes=tx_bytes)
+
+   # Hand off both the sponsor's rebuilt bytes and its signature together --
+   # the sender needs both, not just the bytes, to co-sign and submit.
+   handoff_back = _write_tempfile(
+       text=json.dumps({"tx_bytes": tx_bytes, "signature": sig_sponsor})
+   )
+   payload = json.loads(_read_tempfile(path=handoff_back))
+   sender_bytes = payload["tx_bytes"]
+   sig_sponsor = payload["signature"]
+
+   # Security gate: verify the sponsor's signature actually covers these
+   # bytes -- the sender is the final owner of these coins before execution
+   # and should not sign blindly. Also check for transport/RPC errors, not
+   # just an invalid signature.
+   verify_result = await client.execute(
+       command=VerifyTransactionSignature(
+           message=sender_bytes, signature=sig_sponsor, author=sponsor
+       )
+   )
+   if verify_result.is_err() or not verify_result.result_data.is_valid:
+       raise ValueError("Sponsor signature failed verification")
+
+   sig_sender = _sign_as(client=client, address=sender, tx_bytes=sender_bytes)
+
+   result = await client.execute(
+       command=ExecuteTransaction(
+           tx_bytestr=sender_bytes, sig_array=[sig_sponsor, sig_sender]
+       )
+   )
+   if result.is_err():
+       raise ValueError(f"Execution failed: {result.result_string()}")
+
+
 Transaction JSON Interchange
 ----------------------------
 
