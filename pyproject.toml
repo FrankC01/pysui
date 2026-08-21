@@ -84,7 +84,7 @@ version = { attr = "pysui.version.__version__" }
 readme = { file = ["README.md"], content-type = "text/markdown" }
 
 [tool.setuptools.package-data]
-pysui = ["**/*.json"]
+pysui = ["**/*.json", "py.typed"]
 samples = ["*.json"]
 
 [project.urls]
