@@ -5,7 +5,7 @@
 
 """Optional pysui_crypto import guard for Confidential Transfer — single point of control for the native extension."""
 
-MINIMUM_PYSUI_CRYPTO_VERSION: tuple[int, int, int] = (0, 2, 2)
+MINIMUM_PYSUI_CRYPTO_VERSION: tuple[int, int, int] = (0, 2, 3)
 
 INSTALL_HINT: str = (
     "pysui_crypto (>= 0.2.2) is required for private transfer (confidential "
@@ -26,7 +26,6 @@ try:
         decrypt_balance,
         subtract_encrypted,
         encrypt_amount_with_proofs,
-        register_with_auditors,
         unwrap_proof,
         unwrap_proofs,
         batched_transfer_proofs,

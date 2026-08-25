@@ -14,7 +14,7 @@ the ``pysui-crypto`` capability gate before construction, so neither ``__init__`
 the per-operation methods re-gate.
 """
 
-from typing import Protocol, Union
+from typing import Optional, Protocol, Union
 
 from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 from pysui.private_transfer.config import PrivateFundsConfig
@@ -119,8 +119,8 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         :param owner: The Sui address being registered (the account owner).
         :type owner: str
         :param elgamal_public_key: The owner's 32-byte ElGamal (Confidential Transfer)
-            public key; passed to ``ristretto255::g_from_bytes`` to build the on-chain
-            ``group_ops::Element<G>`` value.
+            public key; passed through ``ristretto255::g_from_bytes`` and
+            ``twisted_elgamal::public_key`` to build the on-chain ``PublicKey`` value.
         :type elgamal_public_key: bytes
         """
         group = self._pf_config.active_group
@@ -139,18 +139,17 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             arguments=[confidential_token],
             type_arguments=[coin_type],
         )
-        key_encryption = await self.move_call(
-            target="0x1::option::none",
-            arguments=[],
-            type_arguments=[f"{package_id}::auditors::KeyEncryption"],
-        )
-        public_key = await self.move_call(
+        element = await self.move_call(
             target="0x2::ristretto255::g_from_bytes",
             arguments=[elgamal_public_key],
         )
+        public_key = await self.move_call(
+            target=f"{package_id}::twisted_elgamal::public_key",
+            arguments=[element],
+        )
         await self.move_call(
             target=f"{package_id}::contra::register",
-            arguments=[account, auth, confidential_token, public_key, key_encryption],
+            arguments=[account, auth, public_key],
             type_arguments=[coin_type],
         )
         await self.move_call(
@@ -181,8 +180,8 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         :param owner: The Sui address being registered (the account owner).
         :type owner: str
         :param elgamal_public_key: The owner's 32-byte ElGamal (Confidential Transfer)
-            public key; passed to ``ristretto255::g_from_bytes`` to build the on-chain
-            ``group_ops::Element<G>`` value.
+            public key; passed through ``ristretto255::g_from_bytes`` and
+            ``twisted_elgamal::public_key`` to build the on-chain ``PublicKey`` value.
         :type elgamal_public_key: bytes
         :param auth_fn: Callable that builds and returns the ``Auth<T>`` argument, invoked as
             ``auth_fn(txn=self, confidential_token=confidential_token, permission_type=PERMISSIONED_REGISTER)``.
@@ -204,18 +203,17 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         auth = await auth_fn(
             txn=self, confidential_token=confidential_token, permission_type=PERMISSIONED_REGISTER
         )
-        key_encryption = await self.move_call(
-            target="0x1::option::none",
-            arguments=[],
-            type_arguments=[f"{package_id}::auditors::KeyEncryption"],
-        )
-        public_key = await self.move_call(
+        element = await self.move_call(
             target="0x2::ristretto255::g_from_bytes",
             arguments=[elgamal_public_key],
         )
+        public_key = await self.move_call(
+            target=f"{package_id}::twisted_elgamal::public_key",
+            arguments=[element],
+        )
         await self.move_call(
             target=f"{package_id}::contra::register",
-            arguments=[account, auth, confidential_token, public_key, key_encryption],
+            arguments=[account, auth, public_key],
             type_arguments=[coin_type],
         )
         await self.move_call(
@@ -424,6 +422,7 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         recipients: list[tuple[Union[str, bcs.Address], int, Union[str, bytes]]],
         sender_private_key: bytes,
         sender_public_key: bytes,
+        auditor_public_key: Optional[bytes] = None,
     ) -> None:
         """Build the Confidential Transfer PTB moving amounts to one or more recipients.
 
@@ -455,6 +454,12 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         :type sender_private_key: bytes
         :param sender_public_key: The sender's 32-byte ElGamal public key.
         :type sender_public_key: bytes
+        :param auditor_public_key: Optional 32-byte auditor ElGamal public key. When
+            supplied, per-transfer auditor decryption handles and a folded ElGamal proof
+            are generated and passed on-chain as ``Option<AuditorPackage>``; when omitted,
+            ``option::none`` is passed and no auditor data is produced. pysui only relays
+            this value -- auditors are established by the token owner, not by the SDK.
+        :type auditor_public_key: Optional[bytes]
         :raises ValueError: If ``recipients`` is empty, or the batch total exceeds the
             sender's decrypted active balance.
         """
@@ -477,7 +482,7 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         sender_ta = await self._token_account(
             coin_type=coin_type_str, account_id=sender_account
         )
-        old_active_balance = _flatten_encrypted_amount(amount=sender_ta.active.amount)
+        old_active_balance = _flatten_encrypted_amount(amount=sender_ta.balance.active.amount)
 
         recipient_accounts: list[str] = []
         recipient_pks: list[bytes] = []
@@ -493,7 +498,7 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
                 coin_type=coin_type_str, account_id=recipient_account
             )
             recipient_accounts.append(recipient_account)
-            recipient_pks.append(bytes(recipient_ta.pk.bytes))
+            recipient_pks.append(bytes(recipient_ta.balance.pk.element.bytes))
             amounts.append(amount)
             memos.append(memo.encode("utf-8") if isinstance(memo, str) else memo)
 
@@ -519,6 +524,7 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             list(zip(recipient_pks, amounts)),
             new_balance,
             session_id,
+            auditor_public_key,
         )
 
         auth = await self.move_call(
@@ -527,7 +533,7 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             type_arguments=[coin_type_str],
         )
         receiver_pks = await self.move_call(
-            target=f"{package_id}::decode::g_vector",
+            target=f"{package_id}::decode::public_keys",
             arguments=[recipient_pks],
         )
         encrypted_amounts = [
@@ -541,28 +547,25 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             items=encrypted_amounts,
             item_type=f"{package_id}::encrypted_amount::EncryptedAmount",
         )
-        consistency_proofs = [
+        elgamal_proofs = [
             await self.move_call(
-                target=f"{package_id}::decode::consistency_proof",
+                target=f"{package_id}::decode::elgamal_proof",
                 arguments=[_chunk32(blob=each)],
             )
             for each in proofs["consistency_proofs"]
         ]
-        consistency_proof_vector = await self.make_move_vector(
-            items=consistency_proofs,
-            item_type=f"{package_id}::encrypted_amount::ConsistencyProof",
+        receiver_encs_pok = await self.make_move_vector(
+            items=elgamal_proofs[:-1],
+            item_type=f"{package_id}::nizk::ElGamalProof",
         )
-        well_formed_proofs = await self.move_call(
-            target=f"{package_id}::encrypted_amount::new_well_formed_proof",
-            arguments=[proofs["range_proofs"], consistency_proof_vector],
+        sender_encs_pok = elgamal_proofs[-1]
+        range_proofs = await self.move_call(
+            target=f"{package_id}::range_proof::new_range_proofs",
+            arguments=[proofs["range_proofs"]],
         )
         total_sender_handle = await self.move_call(
             target="0x2::ristretto255::g_from_bytes",
             arguments=[proofs["total_sender_handle"]],
-        )
-        consistency_proof = await self.move_call(
-            target=f"{package_id}::decode::elgamal_proof",
-            arguments=[_chunk32(blob=proofs["sender_total_consistency_proof"])],
         )
         seed_point = await self.move_call(
             target="0x2::ristretto255::g_from_bytes",
@@ -576,6 +579,35 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             target=f"{package_id}::decode::ddh_proof",
             arguments=[_chunk32(blob=proofs["balance_proof"])],
         )
+        if auditor_public_key is None:
+            auditor_package = await self.move_call(
+                target="0x1::option::none",
+                arguments=[],
+                type_arguments=[f"{package_id}::auditors::AuditorPackage"],
+            )
+        else:
+            handle_parts: list[bytes] = [
+                part
+                for handle in proofs["auditor_handles"]
+                for part in _chunk32(blob=handle)
+            ]
+            auditor_handles = await self.move_call(
+                target=f"{package_id}::decode::auditor_decryption_handles",
+                arguments=[handle_parts],
+            )
+            auditor_proof = await self.move_call(
+                target=f"{package_id}::decode::elgamal_proof",
+                arguments=[_chunk32(blob=proofs["auditor_proof"])],
+            )
+            auditor_data = await self.move_call(
+                target=f"{package_id}::auditors::new_auditor_package",
+                arguments=[auditor_handles, auditor_proof],
+            )
+            auditor_package = await self.move_call(
+                target="0x1::option::some",
+                arguments=[auditor_data],
+                type_arguments=[f"{package_id}::auditors::AuditorPackage"],
+            )
         batch = await self.move_call(
             target=f"{package_id}::contra::batched_transfer",
             arguments=[
@@ -585,12 +617,14 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
                 "0x403",
                 receiver_pks,
                 receiver_amounts,
-                well_formed_proofs,
-                total_sender_handle,
-                consistency_proof,
-                seed_point,
+                receiver_encs_pok,
                 new_balance_amount,
+                total_sender_handle,
+                sender_encs_pok,
+                range_proofs,
+                seed_point,
                 balance_proof,
+                auditor_package,
             ],
             type_arguments=[coin_type_str],
         )
@@ -674,7 +708,7 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         owner_ta = await self._token_account(
             coin_type=coin_type_str, account_id=account
         )
-        old_active_balance = _flatten_encrypted_amount(amount=owner_ta.active.amount)
+        old_active_balance = _flatten_encrypted_amount(amount=owner_ta.balance.active.amount)
 
         active_balance = _ext.decrypt_balance(
             account_private_key, old_active_balance, _ext.get_bsgs_table()
@@ -708,17 +742,13 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             target=f"{package_id}::decode::encrypted_amount",
             arguments=[_chunk32(blob=proofs["new_balance_amount"])],
         )
-        consistency_proof = await self.move_call(
-            target=f"{package_id}::decode::consistency_proof",
+        new_balance_pok = await self.move_call(
+            target=f"{package_id}::decode::elgamal_proof",
             arguments=[_chunk32(blob=proofs["consistency_proofs"][0])],
         )
-        consistency_proof_vector = await self.make_move_vector(
-            items=[consistency_proof],
-            item_type=f"{package_id}::encrypted_amount::ConsistencyProof",
-        )
-        new_balance_proof = await self.move_call(
-            target=f"{package_id}::encrypted_amount::new_well_formed_proof",
-            arguments=[proofs["range_proofs"], consistency_proof_vector],
+        new_balance_range_proofs = await self.move_call(
+            target=f"{package_id}::range_proof::new_range_proofs",
+            arguments=[proofs["range_proofs"]],
         )
         balance_proof = await self.move_call(
             target=f"{package_id}::decode::ddh_proof",
@@ -733,7 +763,8 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
                 "0x403",
                 pool,
                 new_balance_amount,
-                new_balance_proof,
+                new_balance_pok,
+                new_balance_range_proofs,
                 amount,
                 balance_proof,
             ],
@@ -813,7 +844,7 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         owner_ta = await self._token_account(
             coin_type=coin_type_str, account_id=account
         )
-        old_active_balance = _flatten_encrypted_amount(amount=owner_ta.active.amount)
+        old_active_balance = _flatten_encrypted_amount(amount=owner_ta.balance.active.amount)
 
         active_balance = _ext.decrypt_balance(
             account_private_key, old_active_balance, _ext.get_bsgs_table()
@@ -845,17 +876,13 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             target=f"{package_id}::decode::encrypted_amount",
             arguments=[_chunk32(blob=proofs["new_balance_amount"])],
         )
-        consistency_proof = await self.move_call(
-            target=f"{package_id}::decode::consistency_proof",
+        new_balance_pok = await self.move_call(
+            target=f"{package_id}::decode::elgamal_proof",
             arguments=[_chunk32(blob=proofs["consistency_proofs"][0])],
         )
-        consistency_proof_vector = await self.make_move_vector(
-            items=[consistency_proof],
-            item_type=f"{package_id}::encrypted_amount::ConsistencyProof",
-        )
-        new_balance_proof = await self.move_call(
-            target=f"{package_id}::encrypted_amount::new_well_formed_proof",
-            arguments=[proofs["range_proofs"], consistency_proof_vector],
+        new_balance_range_proofs = await self.move_call(
+            target=f"{package_id}::range_proof::new_range_proofs",
+            arguments=[proofs["range_proofs"]],
         )
         balance_proof = await self.move_call(
             target=f"{package_id}::decode::ddh_proof",
@@ -870,7 +897,8 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
                 "0x403",
                 pool,
                 new_balance_amount,
-                new_balance_proof,
+                new_balance_pok,
+                new_balance_range_proofs,
                 amount,
                 balance_proof,
             ],
@@ -951,7 +979,7 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
         owner_ta = await self._token_account(
             coin_type=coin_type, account_id=account
         )
-        old_active_balance = _flatten_encrypted_amount(amount=owner_ta.active.amount)
+        old_active_balance = _flatten_encrypted_amount(amount=owner_ta.balance.active.amount)
         session_id = utils.session_id(
             package_id=package_id,
             account_id=account,
@@ -975,9 +1003,13 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             arguments=[confidential_token],
             type_arguments=[coin_type],
         )
-        new_pk = await self.move_call(
+        new_element = await self.move_call(
             target="0x2::ristretto255::g_from_bytes",
             arguments=[new_public],
+        )
+        new_pk = await self.move_call(
+            target=f"{package_id}::twisted_elgamal::public_key",
+            arguments=[new_element],
         )
         handles = await self.move_call(
             target=f"{package_id}::decode::g_vector",
@@ -987,21 +1019,14 @@ class PrivateFundsTransaction(AsyncSuiTransaction):
             target=f"{package_id}::decode::ddh_proof",
             arguments=[_chunk32(blob=proofs["rekey_proof"])],
         )
-        key_encryption = await self.move_call(
-            target="0x1::option::none",
-            arguments=[],
-            type_arguments=[f"{package_id}::auditors::KeyEncryption"],
-        )
         await self.move_call(
-            target=f"{package_id}::contra::set_public_key",
+            target=f"{package_id}::contra::rekey_token_account",
             arguments=[
                 account,
                 auth,
-                confidential_token,
                 new_pk,
                 handles,
                 proof,
-                key_encryption,
             ],
             type_arguments=[coin_type],
         )

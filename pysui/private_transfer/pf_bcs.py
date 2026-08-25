@@ -90,16 +90,41 @@ class VerifiedKeyEncryption(pbcsbase.BCS_Struct):
     ]
 
 
+class SessionId(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::session_id::SessionId"""
+
+    _fields = [("id", [bcse.U8, None, True])]
+
+
+class PublicKey(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::twisted_elgamal::PublicKey"""
+
+    _fields = [("element", Element_G)]
+
+
+class AccumulatedAmount(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::balance::AccumulatedAmount"""
+
+    _fields = [("amount", EncryptedAmount), ("terms", bcse.U16)]
+
+
+class Balances(pbcsbase.BCS_Struct):
+    """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::balance::Balances"""
+
+    _fields = [
+        ("pk", PublicKey),
+        ("active", AccumulatedAmount),
+        ("pending", AccumulatedAmount),
+        ("public_balance", bcse.U64),
+    ]
+
+
 class TokenAccount(pbcsbase.BCS_Struct):
     """Generated from 0xdbf579054d6a93d3eca02d549cf16d4008475c8930fdfda40bef763a7385fff1::contra::TokenAccount"""
 
     _fields = [
-        ("pk", Element_G),
-        ("verified_key_encryption", VerifiedKeyEncryption),
-        ("session_id", [bcse.U8, None, True]),
+        ("session_id", SessionId),
         ("is_frozen", bool),
         ("accepts_deposits", bool),
-        ("active", EncryptedBalance),
-        ("pending", EncryptedBalance),
-        ("public_balance", PublicCoin),
+        ("balance", Balances),
     ]

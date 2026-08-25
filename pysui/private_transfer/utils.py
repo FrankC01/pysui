@@ -144,9 +144,10 @@ async def _token_account(
 
     ``TokenAccount<T>`` is a plain dynamic field (``has store``, no ``key``) hung off
     the owner's shared ``Account`` object under the ``TokenAccountKey<T>`` name. Its
-    BCS payload carries the owner's ElGamal public key (``pk``), the confidential
-    ``active`` and ``pending`` balances, the plaintext ``public_balance``, and the
-    ``verified_key_encryption`` auditor stamp.
+    BCS payload carries the account's ``session_id``, its freeze and deposit flags,
+    and a ``Balances<T>`` holding the owner's ElGamal public key (``pk``), the
+    confidential ``active`` and ``pending`` balances, and the plaintext
+    ``public_balance``.
 
     :param client: An async client used to read the dynamic fields.
     :type client: AsyncClientBase
@@ -222,9 +223,9 @@ async def account_balances(
         coin_type=coin_type,
     )
     return (
-        _decrypt_amount(private_key=private_key, amount=account.active.amount),
-        _decrypt_amount(private_key=private_key, amount=account.pending.amount),
-        int(account.public_balance.value),
+        _decrypt_amount(private_key=private_key, amount=account.balance.active.amount),
+        _decrypt_amount(private_key=private_key, amount=account.balance.pending.amount),
+        int(account.balance.public_balance),
     )
 
 

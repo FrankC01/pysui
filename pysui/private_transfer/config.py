@@ -162,20 +162,20 @@ class PrivateFundsConfig:
         """Create the default configuration file with network groups.
 
         ``devnet`` is pre-populated with the live pysui-ct object ids for the
-        ``contra`` module (published 2026-07-21). ``testnet`` and ``mainnet``
+        ``contra`` module (published 2026-08-25). ``testnet`` and ``mainnet``
         remain the placeholder ``"0x"`` until CT is deployed there and are
         expected to be replaced with real object ids before use.
         """
         network_ids: dict[str, dict[str, str]] = {
             "devnet": {
                 "package_id": (
-                    "0x5dd6554268ac3e50b9c510a84bb75b6ba85bb491cd5f18314cbb2b9a5cf1dca5"
+                    "0xa516f301e83e90c2f335c5ce22802061faeacbf8a093bb9c5afd3165a9521add"
                 ),
                 "token_registry": (
-                    "0xbf5f6e9e9af66e87691e6c43091aa54eaf18e47b9aca7d18ac94d85445772d6c"
+                    "0x674fbada71b10a4561e174245cdf27a3e446fb406fd54e3abee4ba4f86635dfa"
                 ),
                 "account_registry": (
-                    "0xbdb5acc18cc7dbd02967fd1ebec44c1a5192b889dab2a4cd56d6a671d3a8c02a"
+                    "0x8ff4a773339061ad8e1ecb961da58ddba9368c948fd180ca161990d03c0665f5"
                 ),
             },
             "testnet": {
