@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- redstuff_decode primitives
+
 ### Fixed
 
 - Fix documentation for multi-sig usage in Executors
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated gRPC proto generation, no impacts to existing SuiCommands
+- bumped pysui-fastcrypto dependency to >= 0.7.7
 
 ### Removed
 
