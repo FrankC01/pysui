@@ -348,10 +348,10 @@ class _BaseParallelExecutor:
                         await self._gas_pool.checkin(updated)
                         gas_coin = None
 
-                    # Gas cost always deducted; accumulator tracks MERGE/SPLIT in ADDRESS_BALANCE
+                    # Gas cost deducted here; accumulator tracking is replenishment-only
+                    # (see _send_funds_to_account) — every ADDRESS_BALANCE tx's SPLIT write
+                    # equals its own gas cost, so tracking it here would double-deduct.
                     self._update_tracked_balance(executed_tx.effects)
-                    if self._options.gas_mode == GasMode.ADDRESS_BALANCE:
-                        self._update_tracked_balance_from_accumulator(executed_tx)
 
                     if not item.future.done():
                         item.future.set_result(executed_tx)
