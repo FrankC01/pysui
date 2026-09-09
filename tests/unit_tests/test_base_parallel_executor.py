@@ -510,7 +510,7 @@ class TestUpdateTrackedBalanceFromAccumulator:
     def _make_accumulator_tx(self, operation, value):
         acc = MagicMock()
         acc.operation = operation
-        acc.value = value
+        acc.integer_value = value
         changed_obj = MagicMock()
         changed_obj.output_state = "ACCUMULATOR_WRITE"
         changed_obj.accumulator_write = acc
