@@ -36,10 +36,10 @@ Example Construction Option 1
 
 .. code-block:: Python
 
-    from pysui import SuiConfig
+    from pysui import PysuiConfiguration
     from pysui.sui.sui_crypto import MultiSig, SuiKeyPair
 
-    def gen_ms(config: SuiConfig) -> MultiSig:
+    def gen_ms(config: PysuiConfiguration) -> MultiSig:
         """Create a new MultiSig object.
 
         In this scenario, the first two keys must be used together in signing to allow a
@@ -132,7 +132,8 @@ string or a ``SigningMultiSig``:
 .. code-block:: python
 
     import asyncio
-    from pysui import PysuiConfiguration, client_factory, GqlSerialTransactionExecutor
+    from pysui import PysuiConfiguration, client_factory
+    from pysui.sui.sui_common.executors import ExecutorOptions, GasMode
     from pysui.sui.sui_common.txn_signing import SigningMultiSig
     from pysui.sui.sui_crypto import MultiSig
 
@@ -142,7 +143,13 @@ string or a ``SigningMultiSig``:
         client = client_factory(cfg)
 
         signing_ms = SigningMultiSig(msig, msig.public_keys[0:2])
-        executor = GqlSerialTransactionExecutor(client=client, sender=signing_ms)
+        options = ExecutorOptions(
+            sender=signing_ms,
+            gas_mode=GasMode.COINS,
+            initial_coins=[],
+            min_threshold_balance=100_000_000,
+        )
+        executor = await client.serial_executor(options=options)
         # Add transactions to the executor as normal ...
 
     if __name__ == "__main__":

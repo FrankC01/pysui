@@ -12,6 +12,7 @@ __all__ = (
     "AddressAliasesVersion",
     "AffectedAddressFilter",
     "AffectedObjectFilter",
+    "AllowedProposers",
     "Argument",
     "ArgumentArgumentKind",
     "AuthenticatorStateExpire",
@@ -569,6 +570,13 @@ class CommandArgumentErrorCommandArgumentErrorKind(betterproto2.Enum):
     The argument specified cannot be used as a reference argument in the Move call. Either the
     argument is a mutable reference and it conflicts with another argument to the call, or the
     argument is mutable and another reference extends it and will be used in a later command.
+    """
+
+    INVALID_TX_CONTEXT = 20
+    """
+    Invalid usage of TxContext in the function signature. TxContext can only be used by
+    reference, `&TxContext` or `&mut TxContext`. If used mutably, it must be the only
+    TxContext parameter, and TxContext can never be returned from a Move call.
     """
 
 
@@ -1253,6 +1261,12 @@ class TransactionExpirationTransactionExpirationKind(betterproto2.Enum):
     retries from unique transactions with otherwise identical inputs.
     """
 
+    VALIDITY = 4
+    """
+    Everything in VALID_DURING, plus a restriction on which validators may
+    propose the transaction in consensus.
+    """
+
 
 class TransactionKindKind(betterproto2.Enum):
     KIND_UNKNOWN = 0
@@ -1491,6 +1505,38 @@ class AffectedObjectFilter(betterproto2.Message):
 
 default_message_pool.register_message(
     "sui.rpc.v2", "AffectedObjectFilter", AffectedObjectFilter
+)
+
+
+@dataclass(eq=False, repr=False)
+class AllowedProposers(betterproto2.Message):
+    """
+    The validators allowed to propose a transaction in consensus.
+
+    Proposal by any other validator is byzantine behavior and invalidates the whole block.
+    """
+
+    epoch: "int | None" = betterproto2.field(1, betterproto2.TYPE_UINT64, optional=True)
+    """
+    The epoch whose committee `proposers` indexes into.
+
+    Committee indices are only meaningful against one committee, so a set recorded for any
+    other epoch is ignored and the transaction is treated as naming no proposers.
+    """
+
+    proposers: "list[int]" = betterproto2.field(
+        2, betterproto2.TYPE_UINT32, repeated=True
+    )
+    """
+    Committee indices of the allowed proposers, strictly increasing and non-empty.
+
+    An empty list names no validator and is rejected; omit `allowed_proposers` entirely to
+    let any validator propose the transaction.
+    """
+
+
+default_message_pool.register_message(
+    "sui.rpc.v2", "AllowedProposers", AllowedProposers
 )
 
 
@@ -7299,6 +7345,14 @@ class TransactionExpiration(betterproto2.Message):
     nonce: "int | None" = betterproto2.field(7, betterproto2.TYPE_UINT32, optional=True)
     """
     User-provided uniqueness identifier to differentiate otherwise identical transactions
+    """
+
+    allowed_proposers: "AllowedProposers | None" = betterproto2.field(
+        8, betterproto2.TYPE_MESSAGE, optional=True
+    )
+    """
+    The validators allowed to propose this transaction in consensus. Only set when `kind`
+    is `VALIDITY`. Leave unset to let any validator propose the transaction.
     """
 
 

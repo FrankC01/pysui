@@ -31,6 +31,17 @@ class ObjectVersionEntry:
     tombstone_expires_ns: int = 0
 
 
+def _version_int(version: str) -> int:
+    """Return a Sui object version as an int for ordering.
+
+    Versions travel as ``str`` throughout the executor stack (ObjectSummary, GasCoin,
+    ObjectVersionEntry), so every ordering comparison must route through here. Ordering
+    them as text is wrong the moment a version gains a digit: ``"9" > "10"`` is True.
+    An empty version (carried by tombstones) sorts below every real version.
+    """
+    return int(version) if version else -1
+
+
 class AbstractObjectRegistry(ABC):
     """Interface for a process-wide object version cache."""
 
@@ -180,8 +191,13 @@ class InMemoryObjectRegistry(AbstractObjectRegistry):
         """Insert or update entry without locking; enforces version monotonicity and LRU bound."""
         existing = self._entries.get(entry.object_id)
         if existing and not entry.is_tombstone and not existing.is_tombstone:
-            # Higher version wins — skip stale writes
-            if existing.version >= entry.version:
+            # Higher version wins — skip stale writes. Compare numerically: a
+            # lexicographic compare silently rejects every advance across a digit
+            # boundary ("9" >= "10" is True), pinning the registry one version behind
+            # the chain permanently. Once that happens every later transaction seeds
+            # the stale version, fails at build-time simulate, never executes, and so
+            # never advances the chain either — the whole batch dies.
+            if _version_int(existing.version) >= _version_int(entry.version):
                 return
         self._entries[entry.object_id] = entry
         self._entries.move_to_end(entry.object_id)

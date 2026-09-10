@@ -21,58 +21,58 @@ class TestAsyncObjectCache:
 
     @pytest.mark.asyncio
     async def test_set_and_get_custom(self):
-        """setCustom and getCustom work for storing arbitrary data."""
+        """add_custom and get_custom work for storing arbitrary data."""
         cache = AsyncObjectCache()
         data = ["item1", "item2"]
-        await cache.setCustom("test_key", data)
-        result = await cache.getCustom("test_key")
+        await cache.add_custom("test_key", data)
+        result = await cache.get_custom("test_key")
         assert result == data
 
     @pytest.mark.asyncio
     async def test_get_nonexistent_key(self):
-        """getCustom returns None for non-existent keys."""
+        """get_custom returns None for non-existent keys."""
         cache = AsyncObjectCache()
-        result = await cache.getCustom("nonexistent")
+        result = await cache.get_custom("nonexistent")
         assert result is None
 
     @pytest.mark.asyncio
     async def test_overwrite_custom_value(self):
         """Setting same key overwrites previous value."""
         cache = AsyncObjectCache()
-        await cache.setCustom("key", "value1")
-        await cache.setCustom("key", "value2")
-        result = await cache.getCustom("key")
+        await cache.add_custom("key", "value1")
+        await cache.add_custom("key", "value2")
+        result = await cache.get_custom("key")
         assert result == "value2"
 
     @pytest.mark.asyncio
     async def test_multiple_keys(self):
         """Cache can store multiple different keys."""
         cache = AsyncObjectCache()
-        await cache.setCustom("key1", "value1")
-        await cache.setCustom("key2", {"data": "value2"})
-        await cache.setCustom("key3", [1, 2, 3])
+        await cache.add_custom("key1", "value1")
+        await cache.add_custom("key2", {"data": "value2"})
+        await cache.add_custom("key3", [1, 2, 3])
 
-        assert await cache.getCustom("key1") == "value1"
-        assert await cache.getCustom("key2") == {"data": "value2"}
-        assert await cache.getCustom("key3") == [1, 2, 3]
+        assert await cache.get_custom("key1") == "value1"
+        assert await cache.get_custom("key2") == {"data": "value2"}
+        assert await cache.get_custom("key3") == [1, 2, 3]
 
     @pytest.mark.asyncio
     async def test_reset_cache(self):
         """reset() clears all cache entries."""
         cache = AsyncObjectCache()
-        await cache.setCustom("key1", "value1")
-        await cache.setCustom("key2", "value2")
+        await cache.add_custom("key1", "value1")
+        await cache.add_custom("key2", "value2")
         await cache.reset()
-        assert await cache.getCustom("key1") is None
-        assert await cache.getCustom("key2") is None
+        assert await cache.get_custom("key1") is None
+        assert await cache.get_custom("key2") is None
 
     @pytest.mark.asyncio
     async def test_gas_coins_special_key(self):
         """Cache handles gasCoins key specially."""
         cache = AsyncObjectCache()
         coins = ["coin1", "coin2", "coin3"]
-        await cache.setCustom("gasCoins", coins)
-        result = await cache.getCustom("gasCoins")
+        await cache.add_custom("gasCoins", coins)
+        result = await cache.get_custom("gasCoins")
         assert result == coins
 
     @pytest.mark.asyncio
@@ -81,8 +81,8 @@ class TestAsyncObjectCache:
         cache = AsyncObjectCache()
 
         async def set_and_get(key: str, value: str) -> str:
-            await cache.setCustom(key, value)
-            return await cache.getCustom(key)
+            await cache.add_custom(key, value)
+            return await cache.get_custom(key)
 
         results = await asyncio.gather(
             set_and_get("key1", "value1"),
@@ -95,10 +95,10 @@ class TestAsyncObjectCache:
     async def test_none_values(self):
         """Cache can store None as a value (vs not storing key)."""
         cache = AsyncObjectCache()
-        await cache.setCustom("none_key", None)
-        # Since setCustom stores None, getCustom should return None
-        # But we can't distinguish from "not set". In this case, we trust setCustom behavior.
-        result = await cache.getCustom("none_key")
+        await cache.add_custom("none_key", None)
+        # Since add_custom stores None, get_custom should return None
+        # But we can't distinguish from "not set". In this case, we trust add_custom behavior.
+        result = await cache.get_custom("none_key")
         assert result is None
 
     @pytest.mark.asyncio
@@ -107,11 +107,11 @@ class TestAsyncObjectCache:
         cache = AsyncObjectCache()
         await cache.add_object(ObjectSummary(objectId="0xa", version="1", digest="d1", owner="0xowner"))
         await cache.add_object(ObjectSummary(objectId="0xb", version="1", digest="d2", owner=None))
-        await cache.setCustom("k", "v")
+        await cache.add_custom("k", "v")
         await cache.reset()
         assert await cache.get_object("0xa") is None
         assert await cache.get_object("0xb") is None
-        assert await cache.getCustom("k") is None
+        assert await cache.get_custom("k") is None
 
 
 class TestObjectBucketRouting:
@@ -153,11 +153,11 @@ class TestObjectBucketRouting:
 
     @pytest.mark.asyncio
     async def test_get_objects_returns_mixed_results(self):
-        """getObjects handles owned, shared, and missing objects in one call."""
+        """get_objects handles owned, shared, and missing objects in one call."""
         cache = AsyncObjectCache()
         await cache.add_object(ObjectSummary(objectId="0xa", version="1", digest="d1", owner="0xowner"))
         await cache.add_object(ObjectSummary(objectId="0xb", version="2", digest="d2", owner=None))
-        results = await cache.getObjects(["0xa", "0xb", "0xmissing"])
+        results = await cache.get_objects(["0xa", "0xb", "0xmissing"])
         assert results[0].objectId == "0xa"
         assert results[1].objectId == "0xb"
         assert results[2] is None
@@ -200,7 +200,7 @@ class TestDeleteObject:
 
 
 class TestApplyEffects:
-    """Test AsyncObjectCache.applyEffects — owned/shared/deleted routing."""
+    """Test AsyncObjectCache.apply_effects — owned/shared/deleted routing."""
 
     def _make_effects(self, changed_objects):
         import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
@@ -258,7 +258,7 @@ class TestApplyEffects:
     async def test_owned_object_write_routes_to_owned_bucket(self):
         cache = AsyncObjectCache()
         effects = self._make_effects([self._owned_change("0xobj", "0xowner")])
-        await cache.applyEffects(effects)
+        await cache.apply_effects(effects)
         result = await cache.get_object("0xobj")
         assert result is not None
         assert result.owner == "0xowner"
@@ -269,7 +269,7 @@ class TestApplyEffects:
         """SharedInitialVersion → SharedOrImmutableObject bucket, owner=None."""
         cache = AsyncObjectCache()
         effects = self._make_effects([self._shared_change("0xshared", initial_version="42")])
-        await cache.applyEffects(effects)
+        await cache.apply_effects(effects)
         result = await cache.get_object("0xshared")
         assert result is not None
         assert result.owner is None
@@ -282,7 +282,7 @@ class TestApplyEffects:
         entry = ObjectSummary(objectId="0xdel", version="1", digest="d", owner="0xowner")
         await cache.add_object(entry)
         effects = self._make_effects([self._deleted_change("0xdel")])
-        await cache.applyEffects(effects)
+        await cache.apply_effects(effects)
         assert await cache.get_object("0xdel") is None
 
     @pytest.mark.asyncio
@@ -295,7 +295,7 @@ class TestApplyEffects:
             self._shared_change("0xshared"),
             self._deleted_change("0xdel"),
         ])
-        await cache.applyEffects(effects)
+        await cache.apply_effects(effects)
         assert (await cache.get_object("0xnew")).owner == "0xowner2"
         assert (await cache.get_object("0xshared")).owner is None
         assert await cache.get_object("0xdel") is None

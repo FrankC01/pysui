@@ -8,11 +8,13 @@
 from abc import ABC, abstractmethod
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Literal, Union
 from dataclasses import dataclass
 
 from pysui.sui.sui_common.shared_types import ObjectSummary
+from pysui.sui.sui_common.types import TransactionEffects
 from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 # ptypes is imported only for type-checker visibility (TYPE_CHECKING guard) to avoid
 # a circular import: sui_common (lower layer) must not import sui_pgql (upper layer)
@@ -22,6 +24,15 @@ if TYPE_CHECKING:
     import pysui.sui.sui_pgql.pgql_types as ptypes
 
 logger = logging.getLogger(__name__)
+
+
+def deleted_object_ids(*, effects: TransactionEffects) -> list[str]:
+    """Return the object ids these effects mark as deleted (DOES_NOT_EXIST)."""
+    return [
+        changed.object_id
+        for changed in effects.changed_objects
+        if changed.output_state == sui_prot.ChangedObjectOutputObjectState.DOES_NOT_EXIST
+    ]
 
 
 @dataclass
@@ -243,32 +254,13 @@ class AsyncObjectCache(AsyncInMemoryCache):
         """Clear entries for one cache type or all types when None."""
         await self._clear(cache_type)
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.getMoveFunctionDefinition")
-    async def getMoveFunctionDefinition(
-        self, package: str, module: str, function: str
-    ) -> MoveFunctionEntry:
-        """Return cached Move function definition (camelCase alias)."""
-        return await self.get_move_function_definition(package, module, function)
-
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.getObjects")
-    async def getObjects(
-        self, ids: list[str]
-    ) -> list[Union[ObjectSummary, MoveFunctionCacheEntry, None]]:
-        """Return cached object entries for the given ids (camelCase alias)."""
-        return await self.get_objects(ids)
-
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.deleteObjects")
-    async def deleteObjects(self, ids: list[str]):
-        """Delete cached object entries for the given ids (camelCase alias)."""
-        return await self.delete_objects(ids)
-
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.clearOwnedObjects")
-    async def clearOwnedObjects(self):
+    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.clear_owned_objects")
+    async def clear_owned_objects(self):
         """Clear all cached owned-object entries."""
         await self.clear("OwnedObject")
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.clearCustom")
-    async def clearCustom(self):
+    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.clear_custom")
+    async def clear_custom(self):
         """Clear all entries from the custom cache bucket."""
         await self.clear("Custom")
 
@@ -277,33 +269,29 @@ class AsyncObjectCache(AsyncInMemoryCache):
         """Reset all cache entries."""
         await self.clear(None)
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.getCustom")
-    async def getCustom(self, key: str) -> Any:
-        """Return a value from the custom cache bucket (camelCase alias)."""
-        return await self.get_custom(key)
+    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.add_object_to")
+    async def add_object_to(
+        self,
+        *,
+        bucket: Literal["OwnedObject", "SharedOrImmutableObject"],
+        obj: ObjectSummary,
+    ) -> ObjectSummary:
+        """Add an object entry to an explicitly named bucket.
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.setCustom")
-    async def setCustom(self, key: str, value: Any):
-        """Set a value in the custom cache bucket (camelCase alias)."""
-        return await self.add_custom(key, value)
+        Unlike add_object, which infers the bucket from owner truthiness, this targets
+        the bucket directly for callers that already know an object's classification.
+        """
+        await self._set(bucket, obj.objectId, obj)
+        return obj
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.deleteCustom")
-    async def deleteCustom(self, key: str):
-        """Remove a value from the custom cache bucket (camelCase alias)."""
-        return await self.delete_custom(key)
-
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.applyEffects")
-    async def applyEffects(self, effects) -> None:
+    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.apply_effects")
+    async def apply_effects(self, effects) -> None:
         """Apply execution effects to the cache."""
-        import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-
         lamport_version = str(effects.lamport_version)
-        deleted: list[str] = []
+        deleted: list[str] = deleted_object_ids(effects=effects)
         added: list[ObjectSummary] = []
         for changed in effects.changed_objects:
-            if changed.output_state == sui_prot.ChangedObjectOutputObjectState.DOES_NOT_EXIST:
-                deleted.append(changed.object_id)
-            elif changed.output_state in (
+            if changed.output_state in (
                 sui_prot.ChangedObjectOutputObjectState.OBJECT_WRITE,
                 sui_prot.ChangedObjectOutputObjectState.PACKAGE_WRITE,
             ):

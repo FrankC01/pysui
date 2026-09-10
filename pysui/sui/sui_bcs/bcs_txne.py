@@ -57,6 +57,14 @@ class CommandArgumentError(can.RustEnum):
         ("InvalidObjectByValue", None),
         ("InvalidObjectByMutRef", None),
         ("SharedObjectOperationNotAllowed", None),
+        ("InvalidArgumentArity", None),
+        ("InvalidTransferObject", None),
+        ("InvalidMakeMoveVecNonObjectArgument", None),
+        ("ArgumentWithoutValue", None),
+        ("CannotMoveBorrowedValue", None),
+        ("CannotWriteToExtendedReference", None),
+        ("InvalidReferenceArgument", None),
+        ("InvalidTxContext", None),
     ]
 
 

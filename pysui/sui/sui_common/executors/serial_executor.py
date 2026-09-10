@@ -37,7 +37,13 @@ from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.sui.sui_common.txn_tx_argparse import TxnArgMode
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
-from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented
+from pysui.sui.sui_common.instrumentation import (
+    active_collector,
+    get_collector,
+    instrumented,
+    measure,
+    sync_instrumented,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -382,7 +388,9 @@ class SerialExecutor:
                 ExecutionSkipped(transaction_index=-1, reason="Executor is dead")
             )
             return future
-        self._queue.put_nowait(_QueueItem(txn=txn, future=future))
+        self._queue.put_nowait(
+            _QueueItem(txn=txn, future=future, collector=get_collector())
+        )
         return future
 
     @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor.close")
@@ -416,47 +424,48 @@ class SerialExecutor:
     @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor._process_item")
     async def _process_item(self, item: _QueueItem) -> None:
         """Process one queue item through its full lifecycle including retry."""
-        status, result = await self._qp.process(item.txn)
+        async with active_collector(item.collector):
+            status, result = await self._qp.process(item.txn)
 
-        match status:
-            case GasStatus.OK:
-                item.future.set_result(result)
+            match status:
+                case GasStatus.OK:
+                    item.future.set_result(result)
 
-            case GasStatus.TXN_ERROR:
-                item.future.set_result(result)
-                if self._options.on_failure == "exit":
-                    await self._hard_stop("Transaction error with on_failure=exit")
+                case GasStatus.TXN_ERROR:
+                    item.future.set_result(result)
+                    if self._options.on_failure == "exit":
+                        await self._hard_stop("Transaction error with on_failure=exit")
 
-            case GasStatus.NEED_FUNDS:
-                item.future.set_result(result)
-                if not await self._replenish():
-                    await self._hard_stop("on_balance_low declined or failed")
-
-            case GasStatus.NEED_FUNDS_AND_RETRY:
-                while True:
-                    if item.retry_count >= self._options.max_retries:
-                        item.future.set_result(result)
-                        await self._hard_stop("Max retries exhausted")
-                        return
+                case GasStatus.NEED_FUNDS:
+                    item.future.set_result(result)
                     if not await self._replenish():
-                        item.future.set_result(result)
-                        await self._hard_stop("on_balance_low declined on retry")
-                        return
-                    item.retry_count += 1
-                    status, result = await self._qp.process(item.txn)
-                    if status != GasStatus.NEED_FUNDS_AND_RETRY:
-                        break
+                        await self._hard_stop("on_balance_low declined or failed")
 
-                # Dispatch on final retry outcome
-                item.future.set_result(result)
-                if status == GasStatus.NEED_FUNDS:
-                    if not await self._replenish():
-                        await self._hard_stop("on_balance_low declined after retry")
-                elif status == GasStatus.TXN_ERROR and self._options.on_failure == "exit":
-                    await self._hard_stop("Transaction error after retry with on_failure=exit")
+                case GasStatus.NEED_FUNDS_AND_RETRY:
+                    while True:
+                        if item.retry_count >= self._options.max_retries:
+                            item.future.set_result(result)
+                            await self._hard_stop("Max retries exhausted")
+                            return
+                        if not await self._replenish():
+                            item.future.set_result(result)
+                            await self._hard_stop("on_balance_low declined on retry")
+                            return
+                        item.retry_count += 1
+                        status, result = await self._qp.process(item.txn)
+                        if status != GasStatus.NEED_FUNDS_AND_RETRY:
+                            break
 
-            case _:
-                item.future.set_result(result)
+                    # Dispatch on final retry outcome
+                    item.future.set_result(result)
+                    if status == GasStatus.NEED_FUNDS:
+                        if not await self._replenish():
+                            await self._hard_stop("on_balance_low declined after retry")
+                    elif status == GasStatus.TXN_ERROR and self._options.on_failure == "exit":
+                        await self._hard_stop("Transaction error after retry with on_failure=exit")
+
+                case _:
+                    item.future.set_result(result)
 
     @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialExecutor._replenish")
     async def _replenish(self) -> bool:
