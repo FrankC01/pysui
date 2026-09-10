@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [bug](https://github.com/FrankC01/pysui/issues/406) AttributeError crash: wrong field name
 - [bug](https://github.com/FrankC01/pysui/issues/407) double-deduction: gas counted twice
+- [bug](https://github.com/FrankC01/pysui/issues/408) no retry/rebuild mechanism for equivocation-class errors
 - Fix documentation for multi-sig usage in Executors
 
 ### Changed

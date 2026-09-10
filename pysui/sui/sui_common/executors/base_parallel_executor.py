@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
+    import pysui.sui.sui_bcs.bcs as bcs
 
 from pysui.sui.sui_common.txn_signing import SignerBlock
 from pysui.sui.sui_common.executors.exec_types import (
@@ -245,7 +246,14 @@ class _BaseParallelExecutor:
                             u.ObjectStr for u in unresolved.values()
                             if hasattr(u, "ObjectStr")
                         }
-                except (AttributeError, TypeError):
+                except (AttributeError, TypeError) as exc:
+                    logger.warning(
+                        "_BaseParallelExecutor: conflict-id extraction failed, "
+                        "no serialization or registry seeding for this transaction: %s",
+                        exc,
+                    )
+                    count("executor.parallel.conflict_extraction_failed")
+                    unresolved = {}
                     conflict_ids = set()
                 reservation = None
                 gas_coin: GasCoin | None = None
@@ -279,6 +287,7 @@ class _BaseParallelExecutor:
                             reservation=reservation,
                             caching_exec=caching_exec,
                             conflict_ids=conflict_ids,
+                            unresolved_inputs=unresolved,
                         )
                     )
                     self._in_flight.add(task)
@@ -321,12 +330,18 @@ class _BaseParallelExecutor:
         reservation,
         caching_exec: _BaseCachingExecutor,
         conflict_ids: set[str],
+        unresolved_inputs: dict[int, bcs.UnresolvedObjectArg],
     ) -> None:
         """Parallel execute task: build+execute transaction, update gas, release conflict.
 
         conflict_ids are the object ids this transaction claimed and was seeded with.
         They are needed here so any path that does not publish fresh versions can evict
         them, rather than leaving the registry trailing the chain.
+
+        unresolved_inputs are the original index -> UnresolvedObjectArg entries for
+        conflict_ids, captured before the first build resolved them. An equivocation-
+        class on-chain failure restores these onto the builder so a retry actually
+        re-resolves fresh object state instead of reusing the same stale reference.
         """
         semaphore_held = True
         try:
@@ -353,15 +368,45 @@ class _BaseParallelExecutor:
                                 item.txn, self._signing_block, gas_objects_override
                             )
                     except Exception as exc:
+                        error_str = str(exc).lower()
+                        is_equivocation_error = (
+                            "unavailable for consumption" in error_str or
+                            "already locked by a different transaction" in error_str or
+                            "provided version doesn't match" in error_str
+                        )
+
+                        if (
+                            is_equivocation_error
+                            and conflict_ids
+                            and item.retry_count < self._options.max_retries
+                        ):
+                            count("executor.parallel.equivocation_retry_build")
+                            logger.warning(
+                                "_BaseParallelExecutor: build failed on equivocation, "
+                                "retrying: %s",
+                                exc,
+                            )
+                            item.txn.builder.restore_unresolved_inputs(unresolved_inputs)
+                            await caching_exec.cache.delete_objects(list(conflict_ids))
+                            await self._evict_conflicts(conflict_ids=conflict_ids)
+                            if gas_coin is not None:
+                                await self._pool.checkin(gas_coin, retire=True)
+                                gas_coin = None
+                            item.retry_count += 1
+                            if self._options.gas_mode == GasMode.COINS:
+                                self._semaphore.release()
+                                semaphore_held = False
+                                gas_coin = await self._pool.checkout()
+                                await self._semaphore.acquire()
+                                semaphore_held = True
+                            continue
+
                         logger.warning("_BaseParallelExecutor: build failed: %s", exc)
                         # Usually simulate rejecting a seeded version the chain has moved
                         # past. Those ids must not stay in the registry: every later
                         # transaction would seed the same stale version, fail the same
                         # way, and never execute — so the chain never advances either and
                         # the whole batch dies. Evicting bounds the loss to this item.
-                        # This item is not retried: _resolve_deferred_inputs has already
-                        # rewritten the builder's inputs in place and there is no
-                        # un-resolve, so a rebuild would reuse the same stale versions.
                         await self._evict_conflicts(conflict_ids=conflict_ids)
                         if gas_coin is not None:
                             await self._pool.checkin(gas_coin, retire=True)
@@ -386,6 +431,10 @@ class _BaseParallelExecutor:
                             "insufficient gas" in error_str or
                             "insufficient_gas" in error_str
                         )
+                        is_equivocation_error = (
+                            "unavailable for consumption" in error_str or
+                            "already locked by a different transaction" in error_str
+                        )
 
                         if is_gas_error and item.retry_count < self._options.max_retries:
                             if gas_coin is not None:
@@ -395,6 +444,32 @@ class _BaseParallelExecutor:
                                 item.future.set_result((ExecutorError.EXECUTING_ERROR, exc))
                                 await self._hard_stop("on_balance_low declined on gas retry")
                                 return
+                            item.retry_count += 1
+                            if self._options.gas_mode == GasMode.COINS:
+                                self._semaphore.release()
+                                semaphore_held = False
+                                gas_coin = await self._pool.checkout()
+                                await self._semaphore.acquire()
+                                semaphore_held = True
+                            continue
+
+                        if (
+                            is_equivocation_error
+                            and conflict_ids
+                            and item.retry_count < self._options.max_retries
+                        ):
+                            count("executor.parallel.equivocation_retry_transport")
+                            logger.warning(
+                                "_BaseParallelExecutor: transaction hit equivocation "
+                                "before execution, retrying: %s",
+                                exc,
+                            )
+                            item.txn.builder.restore_unresolved_inputs(unresolved_inputs)
+                            await caching_exec.cache.delete_objects(list(conflict_ids))
+                            await self._evict_conflicts(conflict_ids=conflict_ids)
+                            if gas_coin is not None:
+                                await self._pool.checkin(gas_coin, retire=True)
+                                gas_coin = None
                             item.retry_count += 1
                             if self._options.gas_mode == GasMode.COINS:
                                 self._semaphore.release()
@@ -417,6 +492,36 @@ class _BaseParallelExecutor:
 
                     status = getattr(executed_tx.effects, "status", None)
                     if status is not None and status.success is False:
+                        error_desc = str(getattr(status.error, "description", "") or "").lower()
+                        is_equivocation_error = "unavailable for consumption" in error_desc
+
+                        if (
+                            is_equivocation_error
+                            and conflict_ids
+                            and item.retry_count < self._options.max_retries
+                        ):
+                            count("executor.parallel.equivocation_retry")
+                            logger.warning(
+                                "_BaseParallelExecutor: transaction %s hit equivocation on "
+                                "chain, retrying: %s",
+                                executed_tx.digest,
+                                status.error,
+                            )
+                            item.txn.builder.restore_unresolved_inputs(unresolved_inputs)
+                            await caching_exec.cache.delete_objects(list(conflict_ids))
+                            await self._evict_conflicts(conflict_ids=conflict_ids)
+                            if gas_coin is not None:
+                                await self._pool.checkin(gas_coin, retire=True)
+                                gas_coin = None
+                            item.retry_count += 1
+                            if self._options.gas_mode == GasMode.COINS:
+                                self._semaphore.release()
+                                semaphore_held = False
+                                gas_coin = await self._pool.checkout()
+                                await self._semaphore.acquire()
+                                semaphore_held = True
+                            continue
+
                         # build_transaction simulates to estimate budget, so almost every
                         # on-chain failure is caught before submission. This covers the
                         # narrow gap where state moved between simulate and execute.
