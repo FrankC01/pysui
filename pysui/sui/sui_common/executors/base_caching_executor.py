@@ -48,7 +48,7 @@ class _BaseCachingExecutor:
         if gas_objects_override is not None:
             use_gas = gas_objects_override
         else:
-            gas_objects = await self.cache.getCustom("gasCoins")
+            gas_objects = await self.cache.get_custom("gasCoins")
             use_gas = gas_objects or None
         return await txn.build_and_sign(
             use_gas_objects=use_gas,
@@ -58,7 +58,7 @@ class _BaseCachingExecutor:
     @instrumented("pysui.sui.sui_common.executors.base_caching_executor._BaseCachingExecutor.apply_effects")
     async def apply_effects(self, effects: TransactionEffects) -> None:
         """Apply transaction effects to the cache."""
-        await self.cache.applyEffects(effects)
+        await self.cache.apply_effects(effects)
 
     @instrumented("pysui.sui.sui_common.executors.base_caching_executor._BaseCachingExecutor.reset")
     async def reset(self) -> None:
@@ -68,12 +68,12 @@ class _BaseCachingExecutor:
     @instrumented("pysui.sui.sui_common.executors.base_caching_executor._BaseCachingExecutor.update_gas_coins")
     async def update_gas_coins(self, coins: list[str]) -> None:
         """Update the cached gas coins list."""
-        await self.cache.setCustom("gasCoins", coins)
+        await self.cache.add_custom("gasCoins", coins)
 
     @instrumented("pysui.sui.sui_common.executors.base_caching_executor._BaseCachingExecutor.invalidate_gas_coins")
     async def invalidate_gas_coins(self) -> None:
         """Invalidate cached gas coin entries."""
-        await self.cache.setCustom("gasCoins", None)
+        await self.cache.add_custom("gasCoins", None)
 
     @instrumented("pysui.sui.sui_common.executors.base_caching_executor._BaseCachingExecutor.sync_to_registry")
     async def sync_to_registry(
@@ -126,7 +126,7 @@ class _BaseCachingExecutor:
             count("executor.ocs.seed_hit")
             # Bucket named explicitly: add_object routes on owner truthiness, and the
             # registry tracks only owned objects without carrying an owner to route on.
-            await self.cache.addObjectTo(
+            await self.cache.add_object_to(
                 bucket="OwnedObject",
                 obj=ObjectSummary(
                     objectId=entry.object_id,
