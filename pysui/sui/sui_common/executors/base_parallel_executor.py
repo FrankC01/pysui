@@ -42,7 +42,14 @@ from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.sui.sui_common.txn_tx_argparse import TxnArgMode
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
-from pysui.sui.sui_common.instrumentation import count, instrumented, measure, sync_instrumented
+from pysui.sui.sui_common.instrumentation import (
+    active_collector,
+    count,
+    get_collector,
+    instrumented,
+    measure,
+    sync_instrumented,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +209,9 @@ class _BaseParallelExecutor:
                 ExecutionSkipped(transaction_index=-1, reason="Executor is dead")
             )
             return future
-        self._build_queue.put_nowait(_QueueItem(txn=txn, future=future))
+        self._build_queue.put_nowait(
+            _QueueItem(txn=txn, future=future, collector=get_collector())
+        )
         return future
 
     @instrumented("executor.parallel._build_worker")
@@ -224,66 +233,70 @@ class _BaseParallelExecutor:
                 self._build_queue.task_done()
                 continue
 
-            # Conflict acquisition — blocks until all object IDs are free
-            try:
-                async with measure("executor.parallel.object_resolve"):
-                    unresolved = item.txn.builder.get_unresolved_inputs()
-                    conflict_ids: set[str] = {
-                        u.ObjectStr for u in unresolved.values()
-                        if hasattr(u, "ObjectStr")
-                    }
-            except (AttributeError, TypeError):
-                conflict_ids = set()
-            reservation = None
-            gas_coin: GasCoin | None = None
-            semaphore_held = False
-            try:
-                reservation = await self._conflict_tracker.acquire(conflict_ids)
+            # Collector active for the rest of this item's processing (including the
+            # _execute_item task, whose context is forked here at create_task time) —
+            # see Task #104.
+            async with active_collector(item.collector):
+                # Conflict acquisition — blocks until all object IDs are free
+                try:
+                    async with measure("executor.parallel.object_resolve"):
+                        unresolved = item.txn.builder.get_unresolved_inputs()
+                        conflict_ids: set[str] = {
+                            u.ObjectStr for u in unresolved.values()
+                            if hasattr(u, "ObjectStr")
+                        }
+                except (AttributeError, TypeError):
+                    conflict_ids = set()
+                reservation = None
+                gas_coin: GasCoin | None = None
+                semaphore_held = False
+                try:
+                    reservation = await self._conflict_tracker.acquire(conflict_ids)
 
-                # Bound concurrency — block here if max_concurrent tasks are running
-                await self._semaphore.acquire()
-                semaphore_held = True
+                    # Bound concurrency — block here if max_concurrent tasks are running
+                    await self._semaphore.acquire()
+                    semaphore_held = True
 
-                # Gas checkout — blocks if pool is empty (back-pressure in COINS mode)
-                if self._options.gas_mode == GasMode.COINS:
-                    gas_coin = await self._pool.checkout()
+                    # Gas checkout — blocks if pool is empty (back-pressure in COINS mode)
+                    if self._options.gas_mode == GasMode.COINS:
+                        gas_coin = await self._pool.checkout()
 
-                # Per-transaction caching executor (isolated; not shared across tasks)
-                caching_exec = _BaseCachingExecutor(
-                    client=self._client,
-                    gas_owner=self._signing_block.sender_str,
-                    use_account_gas=(self._options.gas_mode == GasMode.ADDRESS_BALANCE),
-                )
-                if conflict_ids:
-                    await caching_exec.seed_from_registry(self._registry, list(conflict_ids))
-                if gas_coin is not None:
-                    await caching_exec.update_gas_coins([gas_coin.object_id])
-
-                task = asyncio.create_task(
-                    self._execute_item(
-                        item=item,
-                        gas_coin=gas_coin,
-                        reservation=reservation,
-                        caching_exec=caching_exec,
-                        conflict_ids=conflict_ids,
+                    # Per-transaction caching executor (isolated; not shared across tasks)
+                    caching_exec = _BaseCachingExecutor(
+                        client=self._client,
+                        gas_owner=self._signing_block.sender_str,
+                        use_account_gas=(self._options.gas_mode == GasMode.ADDRESS_BALANCE),
                     )
-                )
-                self._in_flight.add(task)
-                task.add_done_callback(self._in_flight.discard)
-            except Exception as exc:
-                # Dispatch failed before _execute_item took ownership, so nothing
-                # downstream will release these. Without this the worker task dies and
-                # every pending and future submit() hangs unresolved.
-                if gas_coin is not None:
-                    await self._pool.checkin(gas_coin)
-                if semaphore_held:
-                    self._semaphore.release()
-                if reservation is not None:
-                    await reservation.release()
-                if not item.future.done():
-                    item.future.set_result((ExecutorError.BUILDING_ERROR, exc))
-            finally:
-                self._build_queue.task_done()
+                    if conflict_ids:
+                        await caching_exec.seed_from_registry(self._registry, list(conflict_ids))
+                    if gas_coin is not None:
+                        await caching_exec.update_gas_coins([gas_coin.object_id])
+
+                    task = asyncio.create_task(
+                        self._execute_item(
+                            item=item,
+                            gas_coin=gas_coin,
+                            reservation=reservation,
+                            caching_exec=caching_exec,
+                            conflict_ids=conflict_ids,
+                        )
+                    )
+                    self._in_flight.add(task)
+                    task.add_done_callback(self._in_flight.discard)
+                except Exception as exc:
+                    # Dispatch failed before _execute_item took ownership, so nothing
+                    # downstream will release these. Without this the worker task dies and
+                    # every pending and future submit() hangs unresolved.
+                    if gas_coin is not None:
+                        await self._pool.checkin(gas_coin)
+                    if semaphore_held:
+                        self._semaphore.release()
+                    if reservation is not None:
+                        await reservation.release()
+                    if not item.future.done():
+                        item.future.set_result((ExecutorError.BUILDING_ERROR, exc))
+                finally:
+                    self._build_queue.task_done()
 
     @instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._evict_conflicts")
     async def _evict_conflicts(self, *, conflict_ids: set[str]) -> None:

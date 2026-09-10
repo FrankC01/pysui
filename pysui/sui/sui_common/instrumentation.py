@@ -42,8 +42,8 @@ class InstrumentationCollector:
 
 @asynccontextmanager
 async def active_collector(
-    collector: InstrumentationCollector,
-) -> AsyncIterator[InstrumentationCollector]:
+    collector: Optional[InstrumentationCollector],
+) -> AsyncIterator[Optional[InstrumentationCollector]]:
     """Activate collector for the current async context and all callees.
 
     Usage::
@@ -51,7 +51,15 @@ async def active_collector(
         async with active_collector(DictCollector()) as col:
             await txn.build_and_sign()
         print(col.summary())
+
+    Passing None is a no-op — it leaves whatever collector (or lack of one) is
+    already active for the current context unchanged. This lets a caller that
+    captured ``get_collector()`` at an earlier point (where no collector may
+    have been active) re-activate it later without a separate branch.
     """
+    if collector is None:
+        yield None
+        return
     token = _collector_var.set(collector)
     try:
         yield collector

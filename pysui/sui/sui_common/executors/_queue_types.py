@@ -9,10 +9,11 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, Optional
 
 if TYPE_CHECKING:
     from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
+    from pysui.sui.sui_common.instrumentation import InstrumentationCollector
 
 
 class _Sentinel(Enum):
@@ -33,3 +34,4 @@ class _QueueItem:
     txn: "AsyncSuiTransaction"
     future: "asyncio.Future[Any]"
     retry_count: int = 0
+    collector: Optional["InstrumentationCollector"] = None
