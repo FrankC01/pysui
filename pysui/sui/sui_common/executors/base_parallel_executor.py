@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
+    import pysui.sui.sui_bcs.bcs as bcs
 
 from pysui.sui.sui_common.txn_signing import SignerBlock
 from pysui.sui.sui_common.executors.exec_types import (
@@ -23,6 +24,7 @@ from pysui.sui.sui_common.executors.exec_types import (
 )
 from pysui.sui.sui_common.executors.base_caching_executor import _BaseCachingExecutor
 from pysui.sui.sui_common.executors.conflict_tracker import ConflictTracker
+from pysui.sui.sui_common.executors.finality import FinalityOutcome, wait_for_finality
 from pysui.sui.sui_common.executors.gas_pool import GasCoin, GasCoinPool
 from pysui.sui.sui_common.executors.object_registry import (
     AbstractObjectRegistry,
@@ -36,12 +38,19 @@ from pysui.sui.sui_common.executors.gas_utils import (
     update_tracked_balance_from_accumulator,
     run_replenishment,
 )
-from pysui.sui.sui_common.executors._queue_types import _SENTINEL, _QueueItem
+from pysui.sui.sui_common.executors._queue_types import _SENTINEL, _QueueItem, _Sentinel
 from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.sui.sui_common.txn_tx_argparse import TxnArgMode
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
-from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented
+from pysui.sui.sui_common.instrumentation import (
+    active_collector,
+    count,
+    get_collector,
+    instrumented,
+    measure,
+    sync_instrumented,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +78,7 @@ class _BaseParallelExecutor:
         self._dead: bool = False
         self._closing: bool = False
         self._build_task: asyncio.Task[None] | None = None
-        self._build_queue: asyncio.Queue[_QueueItem | object] = asyncio.Queue()
+        self._build_queue: asyncio.Queue[_QueueItem | _Sentinel] = asyncio.Queue()
         self._in_flight: set[asyncio.Task[None]] = set()
         self._semaphore = asyncio.Semaphore(options.max_concurrent)
         self._conflict_tracker = ConflictTracker()
@@ -81,6 +90,13 @@ class _BaseParallelExecutor:
             self._gas_pool: GasCoinPool | None = GasCoinPool()
         else:
             self._gas_pool = None
+
+    @property
+    def _pool(self) -> GasCoinPool:
+        """The gas pool. Only populated in COINS mode; every call site is mode-guarded."""
+        if self._gas_pool is None:
+            raise RuntimeError("gas pool accessed outside COINS gas mode")
+        return self._gas_pool
 
     @instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._initialize")
     async def _initialize(self) -> None:
@@ -106,7 +122,7 @@ class _BaseParallelExecutor:
                 )
                 for o in selected
             ]
-            await self._gas_pool.replenish(gas_coins)
+            await self._pool.replenish(gas_coins)
             self._tracked_balance = sum(c.balance for c in gas_coins)
         else:
             bal_result = await self._client.execute(
@@ -162,7 +178,7 @@ class _BaseParallelExecutor:
                 )
                 for o in candidates
             ]
-            await self._gas_pool.replenish(gas_coins)
+            await self._pool.replenish(gas_coins)
             self._tracked_balance += sum(c.balance for c in gas_coins)
         else:
             await self._send_funds_to_account(candidates, self._tracked_balance)
@@ -194,7 +210,9 @@ class _BaseParallelExecutor:
                 ExecutionSkipped(transaction_index=-1, reason="Executor is dead")
             )
             return future
-        self._build_queue.put_nowait(_QueueItem(txn=txn, future=future))
+        self._build_queue.put_nowait(
+            _QueueItem(txn=txn, future=future, collector=get_collector())
+        )
         return future
 
     @instrumented("executor.parallel._build_worker")
@@ -216,52 +234,115 @@ class _BaseParallelExecutor:
                 self._build_queue.task_done()
                 continue
 
-            # Conflict acquisition — blocks until all object IDs are free
-            try:
-                async with measure("executor.parallel.object_resolve"):
-                    unresolved = item.txn.builder.get_unresolved_inputs()
-                    conflict_ids: set[str] = {
-                        u.ObjectStr for u in unresolved.values()
-                        if hasattr(u, "ObjectStr")
-                    }
-            except (AttributeError, TypeError):
-                conflict_ids = set()
-            reservation = await self._conflict_tracker.acquire(conflict_ids)
+            # Collector active for the rest of this item's processing (including the
+            # _execute_item task, whose context is forked here at create_task time) —
+            # see Task #104.
+            async with active_collector(item.collector):
+                # Conflict acquisition — blocks until all object IDs are free
+                try:
+                    async with measure("executor.parallel.object_resolve"):
+                        unresolved = item.txn.builder.get_unresolved_inputs()
+                        conflict_ids: set[str] = {
+                            u.ObjectStr for u in unresolved.values()
+                            if hasattr(u, "ObjectStr")
+                        }
+                except (AttributeError, TypeError) as exc:
+                    logger.warning(
+                        "_BaseParallelExecutor: conflict-id extraction failed, "
+                        "no serialization or registry seeding for this transaction: %s",
+                        exc,
+                    )
+                    count("executor.parallel.conflict_extraction_failed")
+                    unresolved = {}
+                    conflict_ids = set()
+                reservation = None
+                gas_coin: GasCoin | None = None
+                semaphore_held = False
+                try:
+                    reservation = await self._conflict_tracker.acquire(conflict_ids)
 
-            # Bound concurrency — block here if max_concurrent tasks are running
-            await self._semaphore.acquire()
+                    # Bound concurrency — block here if max_concurrent tasks are running
+                    await self._semaphore.acquire()
+                    semaphore_held = True
 
-            # Gas checkout — blocks if pool is empty (back-pressure in COINS mode)
-            gas_coin: GasCoin | None = None
-            if self._options.gas_mode == GasMode.COINS:
-                gas_coin = await self._gas_pool.checkout()
+                    # Gas checkout — blocks if pool is empty (back-pressure in COINS mode)
+                    if self._options.gas_mode == GasMode.COINS:
+                        gas_coin = await self._pool.checkout()
 
-            # Per-transaction caching executor (isolated; not shared across tasks)
-            caching_exec = _BaseCachingExecutor(
-                client=self._client,
-                gas_owner=self._signing_block.sender_str,
-                use_account_gas=(self._options.gas_mode == GasMode.ADDRESS_BALANCE),
-            )
-            if gas_coin is not None:
-                await caching_exec.update_gas_coins([gas_coin.object_id])
+                    # Per-transaction caching executor (isolated; not shared across tasks)
+                    caching_exec = _BaseCachingExecutor(
+                        client=self._client,
+                        gas_owner=self._signing_block.sender_str,
+                        use_account_gas=(self._options.gas_mode == GasMode.ADDRESS_BALANCE),
+                    )
+                    if conflict_ids:
+                        await caching_exec.seed_from_registry(self._registry, list(conflict_ids))
+                    if gas_coin is not None:
+                        await caching_exec.update_gas_coins([gas_coin.object_id])
 
-            task = asyncio.create_task(
-                self._execute_item(item, gas_coin, reservation, caching_exec)
-            )
-            self._in_flight.add(task)
-            task.add_done_callback(self._in_flight.discard)
+                    task = asyncio.create_task(
+                        self._execute_item(
+                            item=item,
+                            gas_coin=gas_coin,
+                            reservation=reservation,
+                            caching_exec=caching_exec,
+                            conflict_ids=conflict_ids,
+                            unresolved_inputs=unresolved,
+                        )
+                    )
+                    self._in_flight.add(task)
+                    task.add_done_callback(self._in_flight.discard)
+                except Exception as exc:
+                    # Dispatch failed before _execute_item took ownership, so nothing
+                    # downstream will release these. Without this the worker task dies and
+                    # every pending and future submit() hangs unresolved.
+                    if gas_coin is not None:
+                        await self._pool.checkin(gas_coin)
+                    if semaphore_held:
+                        self._semaphore.release()
+                    if reservation is not None:
+                        await reservation.release()
+                    if not item.future.done():
+                        item.future.set_result((ExecutorError.BUILDING_ERROR, exc))
+                finally:
+                    self._build_queue.task_done()
 
-            self._build_queue.task_done()
+    @instrumented("pysui.sui.sui_common.executors.base_parallel_executor._BaseParallelExecutor._evict_conflicts")
+    async def _evict_conflicts(self, *, conflict_ids: set[str]) -> None:
+        """Drop these object ids from the shared registry.
+
+        Called on every path that finishes without publishing fresh versions for the ids
+        this transaction claimed. Leaving a trailing entry in place is worse than having
+        none: the next transaction seeds it, fails at build-time simulate, and never
+        executes, so the chain never advances past the version the registry is stuck on.
+        Evicting forces the next build to resolve from the network.
+        """
+        for oid in conflict_ids:
+            count("executor.ocs.evict")
+            await self._registry.evict(oid)
 
     @instrumented("executor.parallel._execute_item")
     async def _execute_item(
         self,
+        *,
         item: _QueueItem,
         gas_coin: GasCoin | None,
         reservation,
         caching_exec: _BaseCachingExecutor,
+        conflict_ids: set[str],
+        unresolved_inputs: dict[int, bcs.UnresolvedObjectArg],
     ) -> None:
-        """Parallel execute task: build+execute transaction, update gas, release conflict."""
+        """Parallel execute task: build+execute transaction, update gas, release conflict.
+
+        conflict_ids are the object ids this transaction claimed and was seeded with.
+        They are needed here so any path that does not publish fresh versions can evict
+        them, rather than leaving the registry trailing the chain.
+
+        unresolved_inputs are the original index -> UnresolvedObjectArg entries for
+        conflict_ids, captured before the first build resolved them. An equivocation-
+        class on-chain failure restores these onto the builder so a retry actually
+        re-resolves fresh object state instead of reusing the same stale reference.
+        """
         semaphore_held = True
         try:
             async with reservation:
@@ -287,9 +368,48 @@ class _BaseParallelExecutor:
                                 item.txn, self._signing_block, gas_objects_override
                             )
                     except Exception as exc:
+                        error_str = str(exc).lower()
+                        is_equivocation_error = (
+                            "unavailable for consumption" in error_str or
+                            "already locked by a different transaction" in error_str or
+                            "provided version doesn't match" in error_str
+                        )
+
+                        if (
+                            is_equivocation_error
+                            and conflict_ids
+                            and item.retry_count < self._options.max_retries
+                        ):
+                            count("executor.parallel.equivocation_retry_build")
+                            logger.warning(
+                                "_BaseParallelExecutor: build failed on equivocation, "
+                                "retrying: %s",
+                                exc,
+                            )
+                            item.txn.builder.restore_unresolved_inputs(unresolved_inputs)
+                            await caching_exec.cache.delete_objects(list(conflict_ids))
+                            await self._evict_conflicts(conflict_ids=conflict_ids)
+                            if gas_coin is not None:
+                                await self._pool.checkin(gas_coin, retire=True)
+                                gas_coin = None
+                            item.retry_count += 1
+                            if self._options.gas_mode == GasMode.COINS:
+                                self._semaphore.release()
+                                semaphore_held = False
+                                gas_coin = await self._pool.checkout()
+                                await self._semaphore.acquire()
+                                semaphore_held = True
+                            continue
+
                         logger.warning("_BaseParallelExecutor: build failed: %s", exc)
+                        # Usually simulate rejecting a seeded version the chain has moved
+                        # past. Those ids must not stay in the registry: every later
+                        # transaction would seed the same stale version, fail the same
+                        # way, and never execute — so the chain never advances either and
+                        # the whole batch dies. Evicting bounds the loss to this item.
+                        await self._evict_conflicts(conflict_ids=conflict_ids)
                         if gas_coin is not None:
-                            await self._gas_pool.checkin(gas_coin, retire=True)
+                            await self._pool.checkin(gas_coin, retire=True)
                             gas_coin = None
                         if not item.future.done():
                             item.future.set_result((ExecutorError.BUILDING_ERROR, exc))
@@ -311,10 +431,14 @@ class _BaseParallelExecutor:
                             "insufficient gas" in error_str or
                             "insufficient_gas" in error_str
                         )
+                        is_equivocation_error = (
+                            "unavailable for consumption" in error_str or
+                            "already locked by a different transaction" in error_str
+                        )
 
                         if is_gas_error and item.retry_count < self._options.max_retries:
                             if gas_coin is not None:
-                                await self._gas_pool.checkin(gas_coin, retire=True)
+                                await self._pool.checkin(gas_coin, retire=True)
                                 gas_coin = None
                             if not await self._replenish():
                                 item.future.set_result((ExecutorError.EXECUTING_ERROR, exc))
@@ -324,13 +448,39 @@ class _BaseParallelExecutor:
                             if self._options.gas_mode == GasMode.COINS:
                                 self._semaphore.release()
                                 semaphore_held = False
-                                gas_coin = await self._gas_pool.checkout()
+                                gas_coin = await self._pool.checkout()
+                                await self._semaphore.acquire()
+                                semaphore_held = True
+                            continue
+
+                        if (
+                            is_equivocation_error
+                            and conflict_ids
+                            and item.retry_count < self._options.max_retries
+                        ):
+                            count("executor.parallel.equivocation_retry_transport")
+                            logger.warning(
+                                "_BaseParallelExecutor: transaction hit equivocation "
+                                "before execution, retrying: %s",
+                                exc,
+                            )
+                            item.txn.builder.restore_unresolved_inputs(unresolved_inputs)
+                            await caching_exec.cache.delete_objects(list(conflict_ids))
+                            await self._evict_conflicts(conflict_ids=conflict_ids)
+                            if gas_coin is not None:
+                                await self._pool.checkin(gas_coin, retire=True)
+                                gas_coin = None
+                            item.retry_count += 1
+                            if self._options.gas_mode == GasMode.COINS:
+                                self._semaphore.release()
+                                semaphore_held = False
+                                gas_coin = await self._pool.checkout()
                                 await self._semaphore.acquire()
                                 semaphore_held = True
                             continue
 
                         if gas_coin is not None:
-                            await self._gas_pool.checkin(gas_coin, retire=True)
+                            await self._pool.checkin(gas_coin, retire=True)
                             gas_coin = None
                         if not item.future.done():
                             item.future.set_result((ExecutorError.EXECUTING_ERROR, exc))
@@ -340,18 +490,83 @@ class _BaseParallelExecutor:
                             await self._hard_stop("transaction error with on_failure=exit")
                         return
 
+                    status = getattr(executed_tx.effects, "status", None)
+                    if status is not None and status.success is False:
+                        error_desc = str(getattr(status.error, "description", "") or "").lower()
+                        is_equivocation_error = "unavailable for consumption" in error_desc
+
+                        if (
+                            is_equivocation_error
+                            and conflict_ids
+                            and item.retry_count < self._options.max_retries
+                        ):
+                            count("executor.parallel.equivocation_retry")
+                            logger.warning(
+                                "_BaseParallelExecutor: transaction %s hit equivocation on "
+                                "chain, retrying: %s",
+                                executed_tx.digest,
+                                status.error,
+                            )
+                            item.txn.builder.restore_unresolved_inputs(unresolved_inputs)
+                            await caching_exec.cache.delete_objects(list(conflict_ids))
+                            await self._evict_conflicts(conflict_ids=conflict_ids)
+                            if gas_coin is not None:
+                                await self._pool.checkin(gas_coin, retire=True)
+                                gas_coin = None
+                            item.retry_count += 1
+                            if self._options.gas_mode == GasMode.COINS:
+                                self._semaphore.release()
+                                semaphore_held = False
+                                gas_coin = await self._pool.checkout()
+                                await self._semaphore.acquire()
+                                semaphore_held = True
+                            continue
+
+                        # build_transaction simulates to estimate budget, so almost every
+                        # on-chain failure is caught before submission. This covers the
+                        # narrow gap where state moved between simulate and execute.
+                        count("executor.parallel.failed_on_chain")
+                        logger.warning(
+                            "_BaseParallelExecutor: transaction %s failed on chain: %s",
+                            executed_tx.digest,
+                            getattr(status, "error", None),
+                        )
+                        await self._evict_conflicts(conflict_ids=conflict_ids)
+                        if not item.future.done():
+                            item.future.set_result(
+                                (ExecutorError.EXECUTING_ERROR, status.error)
+                            )
+                        return
+
                     await caching_exec.apply_effects(executed_tx.effects)
-                    await caching_exec.sync_to_registry(self._registry)
+                    # Indexing lags finality. Publish to the shared registry only once
+                    # the node can serve these versions, otherwise the next transaction
+                    # builds against state that has not caught up.
+                    outcome = await wait_for_finality(
+                        client=self._client, digest=executed_tx.digest
+                    )
+                    if outcome is FinalityOutcome.INDEXED:
+                        await caching_exec.sync_to_registry(
+                            self._registry, executed_tx.effects
+                        )
+                    else:
+                        # Nothing was published, so the registry now trails the chain.
+                        # Evict rather than leave it stale: a stale entry is seeded into
+                        # the next transaction, which then fails at simulate and never
+                        # executes. Eviction forces that build to resolve from the
+                        # network, which is what the comment here used to claim already
+                        # happened but did not.
+                        await self._evict_conflicts(conflict_ids=conflict_ids)
 
                     if self._options.gas_mode == GasMode.COINS and gas_coin is not None:
                         updated = self._update_gas_coin(executed_tx, gas_coin)
-                        await self._gas_pool.checkin(updated)
+                        await self._pool.checkin(updated)
                         gas_coin = None
 
-                    # Gas cost always deducted; accumulator tracks MERGE/SPLIT in ADDRESS_BALANCE
+                    # Gas cost deducted here; accumulator tracking is replenishment-only
+                    # (see _send_funds_to_account) — every ADDRESS_BALANCE tx's SPLIT write
+                    # equals its own gas cost, so tracking it here would double-deduct.
                     self._update_tracked_balance(executed_tx.effects)
-                    if self._options.gas_mode == GasMode.ADDRESS_BALANCE:
-                        self._update_tracked_balance_from_accumulator(executed_tx)
 
                     if not item.future.done():
                         item.future.set_result(executed_tx)
@@ -364,7 +579,7 @@ class _BaseParallelExecutor:
 
         finally:
             if gas_coin is not None:
-                await self._gas_pool.checkin(gas_coin, retire=True)
+                await self._pool.checkin(gas_coin, retire=True)
             if semaphore_held:
                 self._semaphore.release()
 

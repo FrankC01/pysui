@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-09-10
+
+### Added
+
+### Fixed
+
+- [bug](https://github.com/FrankC01/pysui/issues/406) AttributeError crash: wrong field name
+- [bug](https://github.com/FrankC01/pysui/issues/407) double-deduction: gas counted twice
+- [bug](https://github.com/FrankC01/pysui/issues/408) no retry/rebuild mechanism for equivocation-class errors
+- Fix documentation for multi-sig usage in Executors
+
+### Changed
+
+- Updated gRPC proto generation, no impacts to existing SuiCommands
+- bumped pysui-fastcrypto dependency to >= 0.7.7
+
+### Removed
+
 ## [1.4.1] - 2026-08-21
 
 ### Added

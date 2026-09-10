@@ -313,7 +313,7 @@ class TestSerialQueueProcessor:
         ex._qp._tracked_balance = 1_000_000
         acc = MagicMock()
         acc.operation = "MERGE"
-        acc.value = 500_000
+        acc.integer_value = 500_000
         changed_obj = MagicMock()
         changed_obj.output_state = "ACCUMULATOR_WRITE"
         changed_obj.accumulator_write = acc
@@ -327,7 +327,7 @@ class TestSerialQueueProcessor:
         ex._qp._tracked_balance = 1_000_000
         acc = MagicMock()
         acc.operation = "SPLIT"
-        acc.value = 300_000
+        acc.integer_value = 300_000
         changed_obj = MagicMock()
         changed_obj.output_state = "ACCUMULATOR_WRITE"
         changed_obj.accumulator_write = acc
@@ -341,7 +341,7 @@ class TestSerialQueueProcessor:
         ex._qp._tracked_balance = 100
         acc = MagicMock()
         acc.operation = "SPLIT"
-        acc.value = 1_000_000
+        acc.integer_value = 1_000_000
         changed_obj = MagicMock()
         changed_obj.output_state = "ACCUMULATOR_WRITE"
         changed_obj.accumulator_write = acc

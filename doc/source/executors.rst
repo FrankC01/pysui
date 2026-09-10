@@ -54,7 +54,7 @@ Restrictions
   both gas fees *and* the PTB operation. In this case ``min_threshold_balance`` may need
   a significantly higher starting value than the default.
 
-**Coins gas mode** (``SerialGasMode.COINS``):
+**Coins gas mode** (``GasMode.COINS``):
 
 ``ExecutorOptions`` parameters:
 
@@ -63,8 +63,8 @@ Restrictions
 +============================+==============================================================+
 | ``sender``                 | Sender address string or ``SigningMultiSig``                 |
 +----------------------------+--------------------------------------------------------------+
-| ``gas_mode``               | ``SerialGasMode.COINS`` or                                   |
-|                            | ``SerialGasMode.ADDRESS_BALANCE``                            |
+| ``gas_mode``               | ``GasMode.COINS`` or                                         |
+|                            | ``GasMode.ADDRESS_BALANCE``                                  |
 +----------------------------+--------------------------------------------------------------+
 | ``initial_coins``          | List of coin object IDs (``list[str]``) or pre-fetched coin  |
 |                            | objects. An empty list triggers automatic coin selection via |
@@ -82,7 +82,7 @@ Restrictions
 +----------------------------+--------------------------------------------------------------+
 | ``on_balance_low``         | Optional async callback invoked when balance drops below     |
 |                            | ``min_threshold_balance``. Receives a                        |
-|                            | ``SerialExecutorContext``. In COINS mode, return a list of   |
+|                            | ``ExecutorContext``. In COINS mode, return a list of         |
 |                            | additional coins to merge in, or ``None``/``[]`` to halt.    |
 |                            | In ADDRESS_BALANCE mode, return any truthy value to          |
 |                            | continue or ``None`` to halt.                                |
@@ -101,7 +101,7 @@ Returns a ``SerialExecutor`` — initialized and ready to use.
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_common.executors import ExecutorOptions, SerialGasMode
+    from pysui.sui.sui_common.executors import ExecutorOptions, GasMode
 
     async def run():
         # Use SUI_GQL_RPC_GROUP for GraphQL or SUI_GRPC_GROUP for gRPC
@@ -109,7 +109,7 @@ Returns a ``SerialExecutor`` — initialized and ready to use.
         client = client_factory(cfg)
         options = ExecutorOptions(
             sender=cfg.active_address,
-            gas_mode=SerialGasMode.COINS,
+            gas_mode=GasMode.COINS,
             initial_coins=[],            # empty → auto-fetch from sender's SUI coins
             min_threshold_balance=100_000_000,
         )
@@ -130,7 +130,7 @@ Returns a ``SerialExecutor`` — initialized and ready to use.
 **Using** ``on_balance_low`` **(coins mode):**
 
 The callback is invoked when the managed gas coin balance drops below
-``min_threshold_balance``. It receives a :class:`SerialExecutorContext` with ``sender``,
+``min_threshold_balance``. It receives a :class:`ExecutorContext` with ``sender``,
 ``tracked_balance``, ``min_threshold_balance``, and ``client``. Return additional coins
 to merge in, or ``None``/``[]`` to halt:
 
@@ -138,10 +138,10 @@ to merge in, or ``None``/``[]`` to halt:
 
     import asyncio
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_common.executors import ExecutorOptions, SerialGasMode, SerialExecutorContext
+    from pysui.sui.sui_common.executors import ExecutorOptions, GasMode, ExecutorContext
     import pysui.sui.sui_common.sui_commands as cmd
 
-    async def on_balance_low(ctx: SerialExecutorContext) -> list | None:
+    async def on_balance_low(ctx: ExecutorContext) -> list | None:
         result = await ctx.client.execute_for_all(
             cmd.GetGas(owner=ctx.sender)
         )
@@ -155,7 +155,7 @@ to merge in, or ``None``/``[]`` to halt:
         client = client_factory(cfg)
         options = ExecutorOptions(
             sender=cfg.active_address,
-            gas_mode=SerialGasMode.COINS,
+            gas_mode=GasMode.COINS,
             initial_coins=[],
             min_threshold_balance=100_000_000,
             on_balance_low=on_balance_low,
@@ -178,14 +178,14 @@ to merge in, or ``None``/``[]`` to halt:
             else:
                 print(result.to_json(indent=2))
 
-**Address balance gas mode** (``SerialGasMode.ADDRESS_BALANCE``):
+**Address balance gas mode** (``GasMode.ADDRESS_BALANCE``):
 
 .. code-block:: python
 
     from pysui import PysuiConfiguration, client_factory
-    from pysui.sui.sui_common.executors import ExecutorOptions, SerialGasMode, SerialExecutorContext
+    from pysui.sui.sui_common.executors import ExecutorOptions, GasMode, ExecutorContext
 
-    async def on_balance_low(ctx: SerialExecutorContext) -> list | None:
+    async def on_balance_low(ctx: ExecutorContext) -> list | None:
         # perform top-up; return truthy to continue, or None to halt
         return None
 
@@ -195,7 +195,7 @@ to merge in, or ``None``/``[]`` to halt:
         client = client_factory(cfg)
         options = ExecutorOptions(
             sender=cfg.active_address,
-            gas_mode=SerialGasMode.ADDRESS_BALANCE,
+            gas_mode=GasMode.ADDRESS_BALANCE,
             initial_coins=[],
             min_threshold_balance=100_000_000,
             on_balance_low=on_balance_low,

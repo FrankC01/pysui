@@ -20,9 +20,11 @@ from pysui.sui.sui_common.executors.exec_types import (
     ExecutorError,
 )
 from pysui.sui.sui_common.executors.gas_pool import GasCoin
+from pysui.sui.sui_common.executors.finality import FinalityOutcome
 
 
 _CE_PATH = "pysui.sui.sui_common.executors.base_parallel_executor._BaseCachingExecutor"
+_FINALITY_PATH = "pysui.sui.sui_common.executors.base_parallel_executor.wait_for_finality"
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +83,7 @@ def _ce_mock(signed_tx=None):
     )
     ce.apply_effects = AsyncMock()
     ce.sync_to_registry = AsyncMock()
+    ce.seed_from_registry = AsyncMock()
     ce.update_gas_coins = AsyncMock()
     return ce
 
@@ -332,7 +335,7 @@ class TestSubmit:
             await fut
             await ex.close()
         ce.apply_effects.assert_called_once_with(executed_tx.effects)
-        ce.sync_to_registry.assert_called_once_with(ex._registry)
+        ce.sync_to_registry.assert_called_once_with(ex._registry, executed_tx.effects)
 
 
 # ---------------------------------------------------------------------------
@@ -510,7 +513,7 @@ class TestUpdateTrackedBalanceFromAccumulator:
     def _make_accumulator_tx(self, operation, value):
         acc = MagicMock()
         acc.operation = operation
-        acc.value = value
+        acc.integer_value = value
         changed_obj = MagicMock()
         changed_obj.output_state = "ACCUMULATOR_WRITE"
         changed_obj.accumulator_write = acc
@@ -683,6 +686,42 @@ class TestClose:
 # ConflictTracking
 # ---------------------------------------------------------------------------
 
+class TestBuildWorkerResilience:
+    """A dispatch failure fails that item only; the worker survives."""
+
+    @pytest.mark.asyncio
+    async def test_dispatch_failure_fails_future_not_worker(self):
+        """Exception during dispatch resolves the future as BUILDING_ERROR."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        ce.seed_from_registry = AsyncMock(side_effect=RuntimeError("boom"))
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            bad = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            result = await asyncio.wait_for(bad, timeout=2.0)
+            assert result[0] == ExecutorError.BUILDING_ERROR
+            await ex.close()
+
+    @pytest.mark.asyncio
+    async def test_worker_still_dispatches_after_failure(self):
+        """A later transaction completes normally after an earlier one fails dispatch."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        ce.seed_from_registry = AsyncMock(side_effect=RuntimeError("boom"))
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            bad = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            await asyncio.wait_for(bad, timeout=2.0)
+            ce.seed_from_registry = AsyncMock()
+            good = ex.submit(_txn_mock(unresolved_ids=["0xobj2"]))
+            assert await asyncio.wait_for(good, timeout=2.0) is executed_tx
+            await ex.close()
+
+
 class TestConflictTracking:
 
     @pytest.mark.asyncio
@@ -714,3 +753,236 @@ class TestConflictTracking:
             result = await fut
             await ex.close()
         assert result is executed_tx
+
+
+class TestRegistryEviction:
+    """Any path that publishes no fresh version must evict the ids it claimed.
+
+    Leaving a trailing entry is worse than having none: the next transaction seeds it,
+    fails at build-time simulate, and never executes, so the chain never advances past
+    the version the registry is stuck on and the whole batch dies the same way.
+    """
+
+    @pytest.mark.asyncio
+    async def test_build_failure_evicts_seeded_ids(self):
+        """A stale seed is the usual cause of the build failure; it must not survive."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        ce = _ce_mock()
+        ce.build_transaction = AsyncMock(side_effect=ValueError("version mismatch"))
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            result = await fut
+            await ex.close()
+        assert result[0] == ExecutorError.BUILDING_ERROR
+        ex._registry.evict.assert_awaited_once_with("0xobj1")
+
+    @pytest.mark.asyncio
+    async def test_unindexed_finality_evicts_instead_of_publishing(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce), patch(
+            _FINALITY_PATH, AsyncMock(return_value=FinalityOutcome.TIMED_OUT)
+        ):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            await fut
+            await ex.close()
+        ce.sync_to_registry.assert_not_called()
+        ex._registry.evict.assert_awaited_once_with("0xobj1")
+
+    @pytest.mark.asyncio
+    async def test_indexed_finality_publishes_and_does_not_evict(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce), patch(
+            _FINALITY_PATH, AsyncMock(return_value=FinalityOutcome.INDEXED)
+        ):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            await fut
+            await ex.close()
+        ce.sync_to_registry.assert_called_once_with(ex._registry, executed_tx.effects)
+        ex._registry.evict.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_chain_failure_evicts_and_does_not_apply_effects(self):
+        """Simulate catches nearly every on-chain failure; this covers the rest."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        executed_tx = _mock_executed_tx()
+        executed_tx.effects.status.success = False
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            result = await fut
+            await ex.close()
+        assert result[0] == ExecutorError.EXECUTING_ERROR
+        ce.apply_effects.assert_not_called()
+        ce.sync_to_registry.assert_not_called()
+        ex._registry.evict.assert_awaited_once_with("0xobj1")
+
+
+class TestEquivocationRetry:
+    """Task #102: equivocation-class failures retry instead of abandoning."""
+
+    @pytest.mark.asyncio
+    async def test_build_failure_equivocation_retries_and_succeeds(self):
+        """A build-time equivocation error is retried and the retry succeeds."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE, max_retries=1)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        ce.cache = MagicMock()
+        ce.cache.delete_objects = AsyncMock()
+        ce.build_transaction = AsyncMock(
+            side_effect=[
+                ValueError(
+                    "Transaction needs to be rebuilt because object 0xshared "
+                    "version 0x7 is unavailable for consumption, current version: 0x8"
+                ),
+                {"tx_bytestr": "abc", "sig_array": ["sig"]},
+            ]
+        )
+        with patch(_CE_PATH, return_value=ce), patch(
+            _FINALITY_PATH, AsyncMock(return_value=FinalityOutcome.INDEXED)
+        ):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            txn = _txn_mock(unresolved_ids=["0xshared"])
+            fut = ex.submit(txn)
+            result = await fut
+            await ex.close()
+        assert result is executed_tx
+        assert ce.build_transaction.await_count == 2
+        txn.builder.restore_unresolved_inputs.assert_called_once()
+        ce.cache.delete_objects.assert_called_once_with(["0xshared"])
+        ex._registry.evict.assert_awaited_once_with("0xshared")
+
+    @pytest.mark.asyncio
+    async def test_build_failure_equivocation_exhausted_retries_abandons(self):
+        """With max_retries=0, an equivocation build failure is not retried."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE, max_retries=0)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        ce = _ce_mock()
+        ce.build_transaction = AsyncMock(
+            side_effect=ValueError(
+                "object 0xshared version 0x7 is unavailable for consumption, "
+                "current version: 0x8"
+            )
+        )
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xshared"]))
+            result = await fut
+            await ex.close()
+        assert result[0] == ExecutorError.BUILDING_ERROR
+        ce.build_transaction.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_build_failure_non_equivocation_error_does_not_retry(self):
+        """A build failure unrelated to equivocation is abandoned, not retried."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE, max_retries=1)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        ce = _ce_mock()
+        ce.build_transaction = AsyncMock(side_effect=ValueError("some other build error"))
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xshared"]))
+            result = await fut
+            await ex.close()
+        assert result[0] == ExecutorError.BUILDING_ERROR
+        ce.build_transaction.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_transport_equivocation_retries_and_succeeds(self):
+        """A transport-level equivocation error (is_ok()==False) is retried."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE, max_retries=1)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        executed_tx = _mock_executed_tx()
+        bad_result = MagicMock()
+        bad_result.is_ok.return_value = False
+        bad_result.result_string = (
+            "(<Status.INVALID_ARGUMENT: 3>, 'object 0xshared version 0x7 is "
+            "unavailable for consumption, current version: 0x8', None)"
+        )
+        ex._client.execute = AsyncMock(side_effect=[bad_result, _ok_result(executed_tx)])
+        ce = _ce_mock()
+        ce.cache = MagicMock()
+        ce.cache.delete_objects = AsyncMock()
+        with patch(_CE_PATH, return_value=ce), patch(
+            _FINALITY_PATH, AsyncMock(return_value=FinalityOutcome.INDEXED)
+        ):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            txn = _txn_mock(unresolved_ids=["0xshared"])
+            fut = ex.submit(txn)
+            result = await fut
+            await ex.close()
+        assert result is executed_tx
+        txn.builder.restore_unresolved_inputs.assert_called_once()
+        ce.cache.delete_objects.assert_called_once_with(["0xshared"])
+        ex._registry.evict.assert_awaited_once_with("0xshared")
+
+    @pytest.mark.asyncio
+    async def test_effects_status_equivocation_retries_and_succeeds(self):
+        """An on-chain effects.status equivocation failure is retried."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE, max_retries=1)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        bad_tx = _mock_executed_tx()
+        bad_tx.effects.status.success = False
+        bad_tx.effects.status.error.description = (
+            "object 0xshared version 0x7 is unavailable for consumption, "
+            "current version: 0x8"
+        )
+        good_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(side_effect=[_ok_result(bad_tx), _ok_result(good_tx)])
+        ce = _ce_mock()
+        ce.cache = MagicMock()
+        ce.cache.delete_objects = AsyncMock()
+        with patch(_CE_PATH, return_value=ce), patch(
+            _FINALITY_PATH, AsyncMock(return_value=FinalityOutcome.INDEXED)
+        ):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            txn = _txn_mock(unresolved_ids=["0xshared"])
+            fut = ex.submit(txn)
+            result = await fut
+            await ex.close()
+        assert result is good_tx
+        txn.builder.restore_unresolved_inputs.assert_called_once()
+        ce.cache.delete_objects.assert_called_once_with(["0xshared"])
+        ex._registry.evict.assert_awaited_once_with("0xshared")
+
+    @pytest.mark.asyncio
+    async def test_conflict_extraction_failure_falls_back_to_empty(self):
+        """AttributeError from get_unresolved_inputs degrades to no conflict tracking."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            txn = MagicMock()
+            txn.builder.get_unresolved_inputs.side_effect = AttributeError("no builder")
+            fut = ex.submit(txn)
+            result = await fut
+            await ex.close()
+        assert result is executed_tx
+        ce.seed_from_registry.assert_not_called()

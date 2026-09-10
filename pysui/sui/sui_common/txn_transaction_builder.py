@@ -202,6 +202,26 @@ class ProgrammableTransactionBuilder:
                 new_inputs[barg] = carg
         self.inputs = new_inputs
 
+    @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.restore_unresolved_inputs")
+    def restore_unresolved_inputs(
+        self, entries: dict[int, bcs.UnresolvedObjectArg]
+    ) -> None:
+        """Revert previously-resolved inputs back to their unresolved form, by original index.
+
+        Used to retry a transaction whose resolved object reference has gone stale (e.g.
+        an equivocation-class on-chain failure) without disturbing any other already-
+        resolved input in the same builder.
+        """
+        new_inputs: dict[bcs.BuilderArg, bcs.CallArg] = {}
+        for idx, (barg, carg) in enumerate(self.inputs.items()):
+            if idx in entries:
+                unres = entries[idx]
+                barg = bcs.BuilderArg("Unresolved", unres.ObjectStr)
+                carg = bcs.CallArg("UnresolvedObject", unres)
+                self.objects_registry[unres.ObjectStr] = unres
+            new_inputs[barg] = carg
+        self.inputs = new_inputs
+
     @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder.shallow_clone")
     def shallow_clone(self) -> "ProgrammableTransactionBuilder":
         """Return a shallow clone of this builder for inspection without mutating the original."""

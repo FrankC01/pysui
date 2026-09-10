@@ -40,12 +40,17 @@ class TimingCollector(InstrumentationCollector):
 
     def __init__(self) -> None:
         self.events: list[tuple[str, int]] = []
+        self.counts: dict[str, int] = {}
 
     @asynccontextmanager
     async def measure(self, label: str) -> AsyncIterator[None]:
         start = perf_counter_ns()
         yield
         self.events.append((label, perf_counter_ns() - start))
+
+    def count(self, label: str) -> None:
+        """Tally one occurrence of label."""
+        self.counts[label] = self.counts.get(label, 0) + 1
 
     def summary(self) -> dict[str, int]:
         result: dict[str, int] = {}
@@ -61,6 +66,7 @@ class TimingCollector(InstrumentationCollector):
 
     def reset(self) -> None:
         self.events.clear()
+        self.counts.clear()
 
 
 @dataclass
