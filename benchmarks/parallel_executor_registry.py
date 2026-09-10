@@ -10,16 +10,19 @@ slice of the SAME on-chain coin object, so every transaction in the batch
 depends on that object's latest version being resolved correctly across its
 concurrent siblings — the exact scenario backlog #60's read-side fix targets.
 Reports, per batch, how many network round-trips were made (via the existing
-gql._execute / grpc._dispatch_grpc_request instrumentation chokepoints) and
-total elapsed time.
+gql._execute / grpc._dispatch_grpc_request instrumentation chokepoints),
+total elapsed time, and OCS seeding outcomes: registry hits, misses, and
+tombstoned entries skipped.
 
-Run once against mainline and once with backlog #60's fix applied, pointing
---output-dir at bench_results/before and bench_results/after respectively,
-to diff network-call counts and timing.
+There is no before/after comparison run. Pre-#60 behaviour was broken rather
+than merely slower, so a baseline measures nothing. Read the run forward
+instead: from the second transaction onward hits should equal the number of
+shared objects, while a run reporting only misses means object ids are not
+reaching conflict_ids and nothing is being seeded at all.
 
 Usage::
     python -m benchmarks.parallel_executor_registry
-    python -m benchmarks.parallel_executor_registry --tx-count 8 --iterations 3 --output-dir bench_results/before
+    python -m benchmarks.parallel_executor_registry --tx-count 8 --iterations 1
 """
 
 from __future__ import annotations
@@ -116,8 +119,8 @@ async def run_batch(
     separate gas-pool coin-version-refresh question uncovered while
     debugging this benchmark (see backlog #60 handoff notes). One coin is
     reserved as the shared source: every transaction in the batch splits
-    from and transfers a slice of it. Returns {"network_calls": int,
-    "elapsed_ns": int}.
+    from and transfers a slice of it. Returns network_calls, elapsed_ns and
+    the three OCS seed counters.
     """
     owned_coins = await fetch_gas_coins(client)
     source_coin = _select_source_coin(owned_coins, protocol)
@@ -129,11 +132,19 @@ async def run_batch(
         min_threshold_balance=_ADDR_BALANCE_THRESHOLD,
         max_concurrent=tx_count,
     )
-    executor = await client.parallel_executor(options=options)
-
     collector = TimingCollector()
-    start = perf_counter_ns()
+    # The executor MUST be constructed inside the active_collector scope.
+    # _initialize() ends with asyncio.create_task(self._build_worker()), and
+    # create_task snapshots the current context — a worker started outside this
+    # block carries _collector_var=None for its whole life, silently no-op'ing
+    # every count()/measure() in the build and execute paths, including the
+    # _execute_item tasks it spawns. That is what produced the misleading
+    # "0 hits / 0 misses / 0 tombstoned / 0 network calls" readings.
     async with active_collector(collector):
+        executor = await client.parallel_executor(options=options)
+        # Timed after construction so elapsed_ns stays comparable with earlier
+        # runs; network_calls now also includes _initialize's balance query.
+        start = perf_counter_ns()
         txns = []
         for _ in range(tx_count):
             txn = await executor.new_transaction()
@@ -145,6 +156,14 @@ async def run_batch(
         results = await asyncio.gather(*futures)
     elapsed_ns = perf_counter_ns() - start
 
+    # Printed before result checking so a failing batch still reports seeding
+    # behaviour — a failure is exactly when these numbers matter most.
+    print(
+        f"  OCS {collector.counts.get('executor.ocs.seed_hit', 0)} hits"
+        f" / {collector.counts.get('executor.ocs.seed_miss', 0)} misses"
+        f" / {collector.counts.get('executor.ocs.seed_tombstone', 0)} tombstoned"
+    )
+
     await executor.close()
 
     for result in results:
@@ -154,7 +173,13 @@ async def run_batch(
 
     network_label = _NETWORK_LABEL[protocol]
     network_calls = sum(1 for label, _ in collector.events if label == network_label)
-    return {"network_calls": network_calls, "elapsed_ns": elapsed_ns}
+    return {
+        "network_calls": network_calls,
+        "elapsed_ns": elapsed_ns,
+        "seed_hits": collector.counts.get("executor.ocs.seed_hit", 0),
+        "seed_misses": collector.counts.get("executor.ocs.seed_miss", 0),
+        "seed_tombstones": collector.counts.get("executor.ocs.seed_tombstone", 0),
+    }
 
 
 async def main() -> None:

@@ -20,9 +20,11 @@ from pysui.sui.sui_common.executors.exec_types import (
     ExecutorError,
 )
 from pysui.sui.sui_common.executors.gas_pool import GasCoin
+from pysui.sui.sui_common.executors.finality import FinalityOutcome
 
 
 _CE_PATH = "pysui.sui.sui_common.executors.base_parallel_executor._BaseCachingExecutor"
+_FINALITY_PATH = "pysui.sui.sui_common.executors.base_parallel_executor.wait_for_finality"
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +83,7 @@ def _ce_mock(signed_tx=None):
     )
     ce.apply_effects = AsyncMock()
     ce.sync_to_registry = AsyncMock()
+    ce.seed_from_registry = AsyncMock()
     ce.update_gas_coins = AsyncMock()
     return ce
 
@@ -332,7 +335,7 @@ class TestSubmit:
             await fut
             await ex.close()
         ce.apply_effects.assert_called_once_with(executed_tx.effects)
-        ce.sync_to_registry.assert_called_once_with(ex._registry)
+        ce.sync_to_registry.assert_called_once_with(ex._registry, executed_tx.effects)
 
 
 # ---------------------------------------------------------------------------
@@ -683,6 +686,42 @@ class TestClose:
 # ConflictTracking
 # ---------------------------------------------------------------------------
 
+class TestBuildWorkerResilience:
+    """A dispatch failure fails that item only; the worker survives."""
+
+    @pytest.mark.asyncio
+    async def test_dispatch_failure_fails_future_not_worker(self):
+        """Exception during dispatch resolves the future as BUILDING_ERROR."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        ce.seed_from_registry = AsyncMock(side_effect=RuntimeError("boom"))
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            bad = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            result = await asyncio.wait_for(bad, timeout=2.0)
+            assert result[0] == ExecutorError.BUILDING_ERROR
+            await ex.close()
+
+    @pytest.mark.asyncio
+    async def test_worker_still_dispatches_after_failure(self):
+        """A later transaction completes normally after an earlier one fails dispatch."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        ce.seed_from_registry = AsyncMock(side_effect=RuntimeError("boom"))
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            bad = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            await asyncio.wait_for(bad, timeout=2.0)
+            ce.seed_from_registry = AsyncMock()
+            good = ex.submit(_txn_mock(unresolved_ids=["0xobj2"]))
+            assert await asyncio.wait_for(good, timeout=2.0) is executed_tx
+            await ex.close()
+
+
 class TestConflictTracking:
 
     @pytest.mark.asyncio
@@ -714,3 +753,84 @@ class TestConflictTracking:
             result = await fut
             await ex.close()
         assert result is executed_tx
+
+
+class TestRegistryEviction:
+    """Any path that publishes no fresh version must evict the ids it claimed.
+
+    Leaving a trailing entry is worse than having none: the next transaction seeds it,
+    fails at build-time simulate, and never executes, so the chain never advances past
+    the version the registry is stuck on and the whole batch dies the same way.
+    """
+
+    @pytest.mark.asyncio
+    async def test_build_failure_evicts_seeded_ids(self):
+        """A stale seed is the usual cause of the build failure; it must not survive."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        ce = _ce_mock()
+        ce.build_transaction = AsyncMock(side_effect=ValueError("version mismatch"))
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            result = await fut
+            await ex.close()
+        assert result[0] == ExecutorError.BUILDING_ERROR
+        ex._registry.evict.assert_awaited_once_with("0xobj1")
+
+    @pytest.mark.asyncio
+    async def test_unindexed_finality_evicts_instead_of_publishing(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce), patch(
+            _FINALITY_PATH, AsyncMock(return_value=FinalityOutcome.TIMED_OUT)
+        ):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            await fut
+            await ex.close()
+        ce.sync_to_registry.assert_not_called()
+        ex._registry.evict.assert_awaited_once_with("0xobj1")
+
+    @pytest.mark.asyncio
+    async def test_indexed_finality_publishes_and_does_not_evict(self):
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        executed_tx = _mock_executed_tx()
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce), patch(
+            _FINALITY_PATH, AsyncMock(return_value=FinalityOutcome.INDEXED)
+        ):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            await fut
+            await ex.close()
+        ce.sync_to_registry.assert_called_once_with(ex._registry, executed_tx.effects)
+        ex._registry.evict.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_chain_failure_evicts_and_does_not_apply_effects(self):
+        """Simulate catches nearly every on-chain failure; this covers the rest."""
+        ex = _make_executor(gas_mode=GasMode.ADDRESS_BALANCE)
+        ex._registry = MagicMock()
+        ex._registry.evict = AsyncMock()
+        executed_tx = _mock_executed_tx()
+        executed_tx.effects.status.success = False
+        ex._client.execute = AsyncMock(return_value=_ok_result(executed_tx))
+        ce = _ce_mock()
+        with patch(_CE_PATH, return_value=ce):
+            ex._build_task = asyncio.create_task(ex._build_worker())
+            fut = ex.submit(_txn_mock(unresolved_ids=["0xobj1"]))
+            result = await fut
+            await ex.close()
+        assert result[0] == ExecutorError.EXECUTING_ERROR
+        ce.apply_effects.assert_not_called()
+        ce.sync_to_registry.assert_not_called()
+        ex._registry.evict.assert_awaited_once_with("0xobj1")

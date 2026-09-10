@@ -8,11 +8,13 @@
 from abc import ABC, abstractmethod
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Literal, Union
 from dataclasses import dataclass
 
 from pysui.sui.sui_common.shared_types import ObjectSummary
+from pysui.sui.sui_common.types import TransactionEffects
 from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 # ptypes is imported only for type-checker visibility (TYPE_CHECKING guard) to avoid
 # a circular import: sui_common (lower layer) must not import sui_pgql (upper layer)
@@ -22,6 +24,15 @@ if TYPE_CHECKING:
     import pysui.sui.sui_pgql.pgql_types as ptypes
 
 logger = logging.getLogger(__name__)
+
+
+def deleted_object_ids(*, effects: TransactionEffects) -> list[str]:
+    """Return the object ids these effects mark as deleted (DOES_NOT_EXIST)."""
+    return [
+        changed.object_id
+        for changed in effects.changed_objects
+        if changed.output_state == sui_prot.ChangedObjectOutputObjectState.DOES_NOT_EXIST
+    ]
 
 
 @dataclass
@@ -292,18 +303,29 @@ class AsyncObjectCache(AsyncInMemoryCache):
         """Remove a value from the custom cache bucket (camelCase alias)."""
         return await self.delete_custom(key)
 
+    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.addObjectTo")
+    async def addObjectTo(
+        self,
+        *,
+        bucket: Literal["OwnedObject", "SharedOrImmutableObject"],
+        obj: ObjectSummary,
+    ) -> ObjectSummary:
+        """Add an object entry to an explicitly named bucket.
+
+        Unlike add_object, which infers the bucket from owner truthiness, this targets
+        the bucket directly for callers that already know an object's classification.
+        """
+        await self._set(bucket, obj.objectId, obj)
+        return obj
+
     @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.applyEffects")
     async def applyEffects(self, effects) -> None:
         """Apply execution effects to the cache."""
-        import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-
         lamport_version = str(effects.lamport_version)
-        deleted: list[str] = []
+        deleted: list[str] = deleted_object_ids(effects=effects)
         added: list[ObjectSummary] = []
         for changed in effects.changed_objects:
-            if changed.output_state == sui_prot.ChangedObjectOutputObjectState.DOES_NOT_EXIST:
-                deleted.append(changed.object_id)
-            elif changed.output_state in (
+            if changed.output_state in (
                 sui_prot.ChangedObjectOutputObjectState.OBJECT_WRITE,
                 sui_prot.ChangedObjectOutputObjectState.PACKAGE_WRITE,
             ):

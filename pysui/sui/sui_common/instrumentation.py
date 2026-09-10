@@ -31,6 +31,14 @@ class InstrumentationCollector:
         """No-op by default. Override to time the wrapped sync block."""
         yield
 
+    def count(self, label: str) -> None:
+        """No-op by default. Override to tally occurrences of a labeled event.
+
+        Counts are deliberately separate from timings: an occurrence has no duration,
+        and routing one through measure() would put zero-length entries into timing
+        summaries.
+        """
+
 
 @asynccontextmanager
 async def active_collector(
@@ -76,6 +84,13 @@ def sync_measure(label: str) -> Iterator[None]:
             yield
     else:
         yield
+
+
+def count(label: str) -> None:
+    """Hook point: tally one occurrence of label if a collector is active; no-op otherwise."""
+    col: Optional[InstrumentationCollector] = _collector_var.get()
+    if col is not None:
+        col.count(label)
 
 
 def instrumented(label: str) -> Callable:
