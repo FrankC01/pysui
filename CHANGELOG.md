@@ -13,8 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Code quality: pylint score improved 8.66 → 9.63/10; total findings reduced 1,437 → 341 (-76.3%) — convention 747→120 (-83.9%), refactor 288→42 (-85.4%), warning 336→172 (-48.8%), error 66→7 (-89.4%)
-- Type safety: mypy errors reduced 343 → 150 (-56.3%) across 40 → 22 files with findings
+- [change](https://github.com/FrankC01/pysui/issues/411) Code quality: pylint score improved 8.66 → 9.63/10; 
+  - total findings reduced 1,437 → 341 (-76.3%) — convention 747→120 (-83.9%), refactor 288→42 (-85.4%), warning 336→172 (-48.8%), 
+  error 66→7 (-89.4%)
+  - Type safety: mypy errors reduced 343 → 150 (-56.3%) across 40 → 22 files with findings
 
 ### Removed
 
