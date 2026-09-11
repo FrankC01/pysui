@@ -4645,21 +4645,6 @@ def _encode_gas_payment(
     )
 
 
-@sync_instrumented("pysui.sui.sui_pgql.pgql_query._encode_expiration")
-def _encode_expiration(
-    exp_dict: "dict | None",
-) -> "sui_prot.TransactionExpiration | None":
-    if not exp_dict:
-        return None
-    epoch_id = exp_dict.get("epochId")
-    if epoch_id is not None:
-        return sui_prot.TransactionExpiration(
-            kind=sui_prot.TransactionExpirationTransactionExpirationKind.EPOCH,
-            epoch=epoch_id,
-        )
-    return None
-
-
 @sync_instrumented("pysui.sui.sui_pgql.pgql_query._encode_balance_changes")
 def _encode_balance_changes(nodes: list) -> "list[sui_prot.BalanceChange]":
     result = []
