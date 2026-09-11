@@ -92,3 +92,96 @@ changelog = "https://github.com/FrankC01/pysui/blob/main/CHANGELOG.md"
 repository = "https://github.com/FrankC01/pysui"
 issues = "https://github.com/FrankC01/pysui/issues"
 documentation = "https://pysui.readthedocs.io"
+
+[tool.pylint.main]
+extension-pkg-allow-list = ["pysui_fastcrypto"]
+ignore-paths = [
+    '^pysui/sui/sui_grpc/suimsgs/.*$',
+]
+ignore-patterns = ['^sui_system_bcs\.py$']
+
+[tool.pylint."messages control"]
+disable = [
+    "line-too-long",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-positional-arguments",
+    "too-many-instance-attributes",
+    "too-many-branches",
+    "too-many-return-statements",
+    "too-many-statements",
+    "too-many-public-methods",
+    "too-many-lines",
+    "fixme",
+]
+
+[tool.pylint.basic]
+# Class names: allow protocol-prefixed classes (PGQL_, PGRPC_, BCS_) alongside
+# ordinary PascalCase.
+class-rgx = "^_?(PGQL_|PGRPC_|BCS_)?[A-Z][a-zA-Z0-9]*$"
+# Class-level "constant" attributes: allow UPPER_CASE (true constants) alongside
+# PascalCase names that mirror Sui/BCS protocol type or enum-variant names
+# (e.g. TransactionData, AesGcm256).
+class-const-rgx = "^([A-Z_][A-Z0-9_]*|[A-Z][a-zA-Z0-9]*)$"
+# Instance/dataclass attributes: allow snake_case, camelCase (GraphQL wire-field
+# mirroring via dataclasses_json), and PascalCase (category-label fields).
+attr-rgx = "^[a-z_][a-zA-Z0-9_]*$|^[A-Z][a-zA-Z0-9]*$"
+# Local variables: allow snake_case alongside UPPER_CASE "local constants"
+# (module-scoped query strings/lookup tables defined inside a class/function body).
+variable-rgx = "^[a-z_][a-z0-9_]*$|^_?[A-Z][A-Z0-9_]*$"
+# Method names: allow snake_case alongside visit_ClassName visitor-pattern methods.
+method-rgx = "^[a-z_][a-z0-9_]*$|^visit_[A-Z][a-zA-Z0-9]*$"
+
+[tool.pylint.typecheck]
+# Attributes set dynamically at runtime that pylint's static analysis cannot see.
+generated-members = [
+    # canoser _fields-based BCS structs (pysui.sui.sui_bcs) — attributes set via
+    # canoser.Struct.initailize_fields_type() looping over the class's _fields list
+    'Digest\..*',
+    'ObjectReference\..*',
+    'SharedObjectReference\..*',
+    'FundsWithdrawal\..*',
+    'ProgrammableMoveCall\..*',
+    'TransferObjects\..*',
+    'SplitCoin\..*',
+    'MergeCoins\..*',
+    'Publish\..*',
+    'MakeMoveVec\..*',
+    'Upgrade\..*',
+    'CheckpointSummaryBCS\..*',
+    # dataclasses_json-decorated classes — @dataclass_json injects from_dict/to_dict/
+    # from_json/to_json; @dataclasses.dataclass injects __dataclass_fields__; pylint
+    # loses track when the two decorators are stacked
+    'TransactionConstraints\..*',
+    'ProtocolConfigGQL\..*',
+    'SuiConfigGQL\..*',
+    'Structure\..*',
+    'GenericStructure\..*',
+    '_ZkSealConfigModel\..*',
+    # abstract base referencing a subclass-contract attribute every concrete
+    # subclass is required to set (~20 subclasses in pgrpc_requests.py)
+    'PGRPC_Request\.RESULT_TYPE',
+]
+
+[tool.mypy]
+
+[[tool.mypy.overrides]]
+module = "canoser.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "jsonschema.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "yaml.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "dateutil.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pysui.sui.sui_grpc.suimsgs.*"
+ignore_errors = true

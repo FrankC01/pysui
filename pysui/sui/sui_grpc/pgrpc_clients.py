@@ -3,6 +3,9 @@
 
 # -*- coding: utf-8 -*-
 
+# dataclasses_json + dataclasses.dataclass decorator stacking confuses mypy's overload resolution for dataclass_json() — verified false positive, see Task #107 handoff (.claude/session-handoff-task107.md)
+# mypy: disable-error-code="call-overload"
+
 """pysui gRPC Clients"""
 
 import asyncio
@@ -12,12 +15,8 @@ import inspect
 import logging
 from typing import (
     Any,
-    Awaitable,
     ClassVar,
     Optional,
-    TypeAlias,
-    Union,
-    Literal,
     TYPE_CHECKING,
 )
 import traceback
@@ -31,30 +30,22 @@ if TYPE_CHECKING:
 
 import betterproto2
 import dataclasses_json
-from deprecated.sphinx import deprecated
+from grpclib.client import Channel
 from grpclib.const import Status as GRPCStatus
 from grpclib.exceptions import GRPCError
 
-from pysui import SDK_CURRENT_VERSION
-from pysui.sui.sui_common.client import PysuiClient
+from pysui import SuiRpcResult, PysuiConfiguration
 from pysui.abstracts.async_client import AsyncClientBase
-from pysui.sui.sui_common.sui_command import SuiCommand
-
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_common.instrumentation import (
     instrumented,
     measure,
     sync_instrumented,
 )
-
-
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-
-
-from grpclib.client import Channel
-
-from pysui import SuiRpcResult, PysuiConfiguration
+from pysui.sui.sui_common.sui_command import SuiCommand
 from pysui.sui.sui_common.types import TransactionConstraints
 
 logger = logging.getLogger("pgrpc_client")
@@ -87,7 +78,7 @@ def _map_pconstraints(in_bound: sui_prot.ProtocolConfig):
     return ProtocolConfig(TransactionConstraints(*ordered_list))
 
 
-class GrpcProtocolClient(AsyncClientBase, PysuiClient):
+class GrpcProtocolClient(PysuiClient, AsyncClientBase):
     """Asynchronous gRPC client."""
 
     _protocol: ClassVar[str] = "grpc"
@@ -368,16 +359,15 @@ def _clean_url(url: str) -> tuple[str | None, int | None] | None:
     :rtype: tuple[str | None, int | None] | None
     """
     try:
-        up: urlparse.ParseResultBytes = urlparse.urlparse(url)
+        up: urlparse.ParseResult = urlparse.urlparse(url)
         if up.netloc:
             url_out = up.netloc.split(":")[0]
             port_out = up.port
             return url_out, port_out
-        elif up.scheme:
+        if up.scheme:
             url_out = up.scheme
             port_out = int(up.path)
             return url_out, port_out
-        else:
-            return ()
+        return ()
     except ValueError:
         return ()

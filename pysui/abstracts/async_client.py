@@ -7,9 +7,12 @@
 
 import functools
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+
+if TYPE_CHECKING:
+    from pysui.sui.sui_common.config import PysuiConfiguration
 
 
 class AsyncClientBase(ABC):
@@ -24,6 +27,11 @@ class AsyncClientBase(ABC):
     _protocol: ClassVar[str] = ""
     _protocol_config: Optional[sui_prot.ProtocolConfig] = None
     """Cached protocol configuration, fetched on first gasless eligibility check."""
+
+    @property
+    @abstractmethod
+    def config(self) -> "PysuiConfiguration":
+        """Fetch the Pysui configuration."""
 
     @abstractmethod
     async def transaction(self, **kwargs) -> Any:

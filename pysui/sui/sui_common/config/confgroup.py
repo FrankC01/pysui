@@ -9,13 +9,13 @@ import base64
 from enum import IntEnum
 import hashlib
 import dataclasses
-from typing import Optional, Union
+from typing import Optional
 import dataclasses_json
 from pysui.abstracts.client_keypair import SignatureScheme, KeyPair
 import pysui.sui.sui_crypto as crypto
 import pysui.sui.sui_utils as utils
 from pysui.sui.sui_constants import SUI_MAX_ALIAS_LEN, SUI_MIN_ALIAS_LEN
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 class GroupProtocol(IntEnum):
@@ -321,16 +321,15 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
             if not alias:
                 if current_iter > 2:
                     raise ValueError("Unable to find unique alias")
-                else:
-                    alias = ProfileGroup._alias_check_or_gen(
-                        aliases=aliases,
-                        word_counts=word_counts,
-                        current_iter=current_iter + 1,
-                    )
+                alias = ProfileGroup._alias_check_or_gen(
+                    aliases=aliases,
+                    word_counts=word_counts,
+                    current_iter=current_iter + 1,
+                )
         else:
             if aliases and alias in aliases:
                 raise ValueError(f"Alias {alias} already exists.")
-            if not (SUI_MIN_ALIAS_LEN <= len(alias) <= SUI_MAX_ALIAS_LEN):
+            if not SUI_MIN_ALIAS_LEN <= len(alias) <= SUI_MAX_ALIAS_LEN:
                 raise ValueError(
                     f"Invalid alias string length, must be betwee {SUI_MIN_ALIAS_LEN} and {SUI_MAX_ALIAS_LEN} characters."
                 )
@@ -498,8 +497,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
                 self.using_address = self.address_list[0] if self.address_list else ""
             if self.using_address:
                 return self.alias_name_for_address(address=self.using_address)
-            else:
-                return self.using_address
+            return self.using_address
         raise ValueError(f"{alias_name} does not exist.")
 
     @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.add_transient_keypair")

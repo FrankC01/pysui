@@ -7,10 +7,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pysui.zklogin_seal.types import SealDemType
+from pysui.zklogin_seal._dem_type import SealDemType
 
 _CRYPTO_AVAILABLE: bool = False
 
@@ -36,6 +33,21 @@ try:
 except ImportError:
     pass
 
+__all__ = [
+    "generate_ephemeral_keypair",
+    "extract_jwt_claims",
+    "compute_nonce",
+    "compute_address_seed",
+    "compute_zklogin_address",
+    "build_zklogin_signature",
+    "seal_decrypt",
+    "EncryptedObject",
+    "generate_session_keypair",
+    "generate_elgamal_keypair",
+    "elgamal_decrypt",
+    "verify_user_secret_key",
+    "seal_signed_message",
+]
 
 INSTALL_HINT: str = (
     "pysui_crypto is not installed. "

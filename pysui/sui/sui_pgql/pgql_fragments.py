@@ -7,9 +7,9 @@
 
 from functools import cache
 from deprecated.sphinx import versionchanged
-from pysui.sui.sui_pgql.pgql_clients import PGQL_Fragment
 from gql.dsl import DSLFragment, DSLInlineFragment, DSLMetaField, DSLSchema
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_pgql.pgql_clients import PGQL_Fragment
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 class GasCost(PGQL_Fragment):

@@ -81,7 +81,7 @@ def _build_coin_reservation_ref(
     )
     acc_id_bytes = hashlib.blake2b(hash_input, digest_size=32).digest()
 
-    chain_bytes = bytes(bcs.Digest.from_str(chain_id).Digest)
+    chain_bytes = bytes(bcs.Digest.from_str(chain_id).Digest)  # pylint: disable=no-member
     obj_id_bytes = bytes(a ^ b for a, b in zip(acc_id_bytes, chain_bytes))
 
     return bcs.ObjectReference(
@@ -184,7 +184,7 @@ class AsyncSuiTransaction(txbase):
         self._executed = False
         self._built_transaction: Optional[bcs.TransactionData] = None
         self._object_cache = object_cache
-        self._argparse = TxnArgParse(client)
+        self._argparse: TxnArgParse = TxnArgParse(client)
 
     def inject_cache(self, cache: AsyncObjectCache) -> None:
         """Inject an external object cache for use during deferred input resolution."""
@@ -227,7 +227,7 @@ class AsyncSuiTransaction(txbase):
                     grpc_to_raw_parameters(mfunc),
                 )
         except ValueError as ve:
-            raise ValueError(f"{target} {ve.args}")
+            raise ValueError(f"{target} {ve.args}") from ve
         raise ValueError(f"Unresolvable target {target}")
 
     @instrumented(
@@ -1332,7 +1332,7 @@ class AsyncSuiTransaction(txbase):
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")
-            elif result.result_data is None or isinstance(
+            if result.result_data is None or isinstance(
                 result.result_data, pgql_type.NoopGQL
             ):
                 raise ValueError(
@@ -1366,8 +1366,7 @@ class AsyncSuiTransaction(txbase):
                     auth_cmd,
                 ),
             )
-        else:
-            raise ValueError("Not a valid upgrade cap.")
+        raise ValueError("Not a valid upgrade cap.")
 
     @instrumented("ptb.cmd.custom_upgrade")
     @_invalidates_build
@@ -1424,5 +1423,4 @@ class AsyncSuiTransaction(txbase):
                 modules, dependencies, package_id, upgrade_ticket
             )
             return await commit_upgrade_fn(self, upgrade_cap, receipt)
-        else:
-            raise ValueError("Not a valid upgrade cap.")
+        raise ValueError("Not a valid upgrade cap.")

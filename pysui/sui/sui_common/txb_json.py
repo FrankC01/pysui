@@ -10,9 +10,9 @@ from __future__ import annotations
 import base64
 import functools
 import json
-import jsonschema
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union
+import jsonschema
 
 if TYPE_CHECKING:
     from pysui.abstracts import AsyncClientBase
@@ -762,10 +762,10 @@ async def from_json_data(
             f"Input reconstruction mismatch: expected {len(built_args)} inputs, "
             f"got {len(txn.builder.inputs)} in builder"
         )
-    missing = [arg for arg in built_args if arg not in txn.builder.inputs]
-    if missing:
+    missing_builder_args = [arg for arg in built_args if arg not in txn.builder.inputs]
+    if missing_builder_args:
         raise ValueError(
-            f"Input reconstruction incomplete: {len(missing)} BuilderArg(s) not found in builder inputs"
+            f"Input reconstruction incomplete: {len(missing_builder_args)} BuilderArg(s) not found in builder inputs"
         )
 
     result_map: dict = {}

@@ -5,6 +5,13 @@
 
 """Abstract gRPC request."""
 
+# pylint: disable=no-member
+# PGRPC_Request.RESULT_TYPE is a required class attribute every concrete subclass
+# (see pysui.sui.sui_grpc.pgrpc_requests, ~20 subclasses) is contracted to set;
+# the abstract base itself never declares it, so pylint reports use of RESULT_TYPE
+# on the base as a false positive no-member. Verified, not disabled blind — see
+# Task #107 handoff (.claude/session-handoff-task107.md) for the audit.
+
 import abc
 from dataclasses import Field
 import enum
@@ -18,7 +25,7 @@ from pysui.sui.sui_grpc.suimsgs.google.protobuf import FieldMask
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 import pysui.sui.sui_grpc.suimsgs.google.protobuf as goog_prot
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 class Service(enum.IntEnum):
@@ -63,7 +70,6 @@ class PGRPC_Request(abc.ABC):
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """Retrieve the function of the service and request object."""
-        pass
 
     @staticmethod
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.PGRPC_Request._field_mask")
@@ -71,8 +77,7 @@ class PGRPC_Request(abc.ABC):
         """Convert list of strings to FieldMask"""
         if field_mask:
             return FieldMask(field_mask)
-        else:
-            return None
+        return None
 
     @classmethod
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.PGRPC_Request.result_fields")
@@ -187,7 +192,7 @@ class MessageBuilder:
         """."""
 
         field_dict: dict = ptype.__dataclass_fields__  # type: ignore
-        cls_name = str(ptype).split(".")[-1].split("'")[0]
+        cls_name = str(ptype).rsplit(".", maxsplit=1)[-1].split("'")[0]
 
         result_list: list[FieldFetch] = []
 

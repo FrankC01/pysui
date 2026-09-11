@@ -3,6 +3,9 @@
 
 # -*- coding: utf-8 -*-
 
+# dataclasses_json + dataclasses.dataclass decorator stacking confuses mypy's overload resolution for dataclass_json() — verified false positive, see Task #107 handoff (.claude/session-handoff-task107.md)
+# mypy: disable-error-code="call-overload"
+
 """Sui Legacy Configuration (JSON RPC) setup."""
 
 import base64
@@ -22,7 +25,7 @@ from pysui.sui.sui_common.config.confgroup import (
 )
 from pysui.sui.sui_crypto import keypair_from_keystring
 import pysui.sui.sui_constants as sui_constant
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 _DEVNET_SUI_URL: str = sui_constant.DEVNET_SUI_URL
 _DEVNET_FAUCET_URL: str = sui_constant.DEVNET_FAUCET_URLV1

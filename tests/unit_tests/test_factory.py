@@ -80,3 +80,49 @@ def test_explicit_group_grpc(mock_grpc):
     cfg.make_active.assert_called_once_with(group_name="my_provider", persist=False)
     mock_grpc.assert_called_once_with(pysui_config=cfg)
     assert result is mock_grpc.return_value
+
+
+# ---------------------------------------------------------------------------
+# Abstract-contract resolution — regression for MRO base-order bug
+# ---------------------------------------------------------------------------
+#
+# AsyncClientBase declares `config` (and other members) as
+# @property @abstractmethod. Both production clients also inherit a
+# concrete `config` implementation via PysuiClient. If AsyncClientBase is
+# listed before the concrete-implementation class in a client's base-class
+# tuple, Python's MRO resolves `config` to AsyncClientBase's still-abstract
+# property first, so `__abstractmethods__` never clears `config` and
+# `client_factory()` raises TypeError: Can't instantiate abstract class.
+# These tests exercise the real (unpatched) classes directly, unlike the
+# dispatch tests above which mock the classes entirely and would not catch
+# this failure mode.
+
+
+def test_gql_protocol_client_has_no_abstract_methods():
+    """GqlProtocolClient must fully satisfy AsyncClientBase + BaseSuiGQLClient."""
+    assert GqlProtocolClient.__abstractmethods__ == frozenset()
+
+
+def test_grpc_protocol_client_has_no_abstract_methods():
+    """GrpcProtocolClient must fully satisfy AsyncClientBase + PysuiClient."""
+    assert GrpcProtocolClient.__abstractmethods__ == frozenset()
+
+
+def test_gql_protocol_client_config_resolves_to_concrete_implementation():
+    """`.config` must resolve to PysuiClient's concrete property, not AsyncClientBase's abstract one."""
+    from pysui.sui.sui_common.client import PysuiClient
+
+    owner = next(
+        c for c in GqlProtocolClient.__mro__ if "config" in c.__dict__
+    )
+    assert owner is PysuiClient
+
+
+def test_grpc_protocol_client_config_resolves_to_concrete_implementation():
+    """`.config` must resolve to PysuiClient's concrete property, not AsyncClientBase's abstract one."""
+    from pysui.sui.sui_common.client import PysuiClient
+
+    owner = next(
+        c for c in GrpcProtocolClient.__mro__ if "config" in c.__dict__
+    )
+    assert owner is PysuiClient

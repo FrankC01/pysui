@@ -20,10 +20,10 @@ import subprocess
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Union
+from typing import Iterable, Optional, Union
 from deprecated.sphinx import versionchanged, versionadded
 import base58
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 _SUI_BUILD2: list[str] = ["move", "build", "--dump", "-e"]
@@ -35,10 +35,10 @@ _SUI_BUILD2: list[str] = ["move", "build", "--dump", "-e"]
 class CompiledPackage:
     """Ease of compilation information dataclass."""
 
-    project_source_digest: bytes = None
-    dependencies: list[str] = None
-    compiled_modules: list[bytes] = None
-    package_digest: list[int] = None
+    project_source_digest: Optional[bytes] = None
+    dependencies: Optional[list[str]] = None
+    compiled_modules: Optional[list[bytes]] = None
+    package_digest: Optional[list[int]] = None
 
 
 
@@ -53,10 +53,10 @@ def _compile_projectg2(
     mbs.append(build_env)
     mbs.extend(args_list)
     mbs.append("-p")
-    mbs.append(path_to_package)
+    mbs.append(str(path_to_package))
 
     mbs.insert(0, sui_bin_str)
-    result = subprocess.run(mbs, capture_output=True, text=True)
+    result = subprocess.run(mbs, capture_output=True, text=True, check=False)
     if result.returncode == 0:
         jsonb = json.loads(result.stdout)
         return CompiledPackage(

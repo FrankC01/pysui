@@ -6,7 +6,7 @@
 """Built-in SuiCommand subclasses — protocol-agnostic Sui operations."""
 
 import base64
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import ClassVar, Optional
 
 from pysui.sui.sui_bcs.bcs import TransactionKind
@@ -14,8 +14,8 @@ from pysui.sui.sui_common.sui_command import SuiCommand
 
 
 import pysui.sui.sui_grpc.pgrpc_requests as rn
-import pysui.sui.sui_pgql.pgql_query as pgql_query
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_pgql import pgql_query
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 # ---------------------------------------------------------------------------
 # Transaction execution

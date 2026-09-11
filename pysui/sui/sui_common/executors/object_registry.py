@@ -49,49 +49,41 @@ class AbstractObjectRegistry(ABC):
     @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.get")
     async def get(self, object_id: str) -> Optional[ObjectVersionEntry]:
         """Return the cached entry for an object id or None if missing."""
-        ...
 
     @abstractmethod
     @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.get_many")
     async def get_many(self, object_ids: list[str]) -> dict[str, ObjectVersionEntry]:
         """Return cached entries for the given object ids keyed by id."""
-        ...
 
     @abstractmethod
     @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.upsert")
     async def upsert(self, entry: ObjectVersionEntry) -> None:
         """Insert or update a single object version entry."""
-        ...
 
     @abstractmethod
     @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.upsert_many")
     async def upsert_many(self, entries: list[ObjectVersionEntry]) -> None:
         """Insert or update multiple object version entries."""
-        ...
 
     @abstractmethod
     @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.tombstone")
     async def tombstone(self, object_id: str, ttl_seconds: float = 30.0) -> None:
         """Mark an object id as deleted for the given TTL window."""
-        ...
 
     @abstractmethod
     @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.evict")
     async def evict(self, object_id: str) -> None:
         """Remove an object id from the registry without tombstoning."""
-        ...
 
     @abstractmethod
     @instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.reset")
     async def reset(self) -> None:
         """Clear all entries from the registry."""
-        ...
 
     @abstractmethod
     @sync_instrumented("pysui.sui.sui_common.executors.object_registry.AbstractObjectRegistry.size")
     def size(self) -> int:
         """Return the current number of cached entries."""
-        ...
 
 
 class InMemoryObjectRegistry(AbstractObjectRegistry):

@@ -11,16 +11,9 @@ if pysui_crypto is absent.
 """
 from __future__ import annotations
 
-from enum import Enum
 from typing import Optional
 
-
-class SealDemType(str, Enum):
-    """Python mirror of pysui_crypto.DemType for type-safe caller code."""
-
-    AesGcm256 = "AesGcm256"
-    Hmac256Ctr = "Hmac256Ctr"
-    Plain = "Plain"
+from pysui.zklogin_seal._dem_type import SealDemType
 
 
 class SealEncryptedObject:
@@ -58,25 +51,31 @@ class SealEncryptedObject:
 
     @property
     def version(self) -> int:
-        return self._ensure_parsed().version  # type: ignore[union-attr]
+        """Return the SEAL encrypted object's format version."""
+        return self._ensure_parsed().version  # type: ignore[attr-defined]
 
     @property
     def package_id(self) -> bytes:
-        return self._ensure_parsed().package_id  # type: ignore[union-attr]
+        """Return the SEAL package ID the ciphertext was encrypted under."""
+        return self._ensure_parsed().package_id  # type: ignore[attr-defined]
 
     @property
     def id(self) -> bytes:
-        return self._ensure_parsed().id  # type: ignore[union-attr]
+        """Return the ciphertext's identity (inner) ID."""
+        return self._ensure_parsed().id  # type: ignore[attr-defined]
 
     @property
     def threshold(self) -> int:
-        return self._ensure_parsed().threshold  # type: ignore[union-attr]
+        """Return the threshold number of key servers required to decrypt."""
+        return self._ensure_parsed().threshold  # type: ignore[attr-defined]
 
     @property
     def services(self) -> list[tuple[bytes, int]]:
-        return self._ensure_parsed().services  # type: ignore[union-attr]
+        """Return the list of (server object ID, share index) pairs used for encryption."""
+        return self._ensure_parsed().services  # type: ignore[attr-defined]
 
     @property
     def dem_type(self) -> SealDemType:
-        native = self._ensure_parsed().dem_type  # type: ignore[union-attr]
+        """Return the DEM (data encryption mode) type used for this ciphertext."""
+        native = self._ensure_parsed().dem_type  # type: ignore[attr-defined]
         return SealDemType(repr(native).split(".")[-1])

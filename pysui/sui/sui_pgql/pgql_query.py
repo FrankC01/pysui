@@ -5,11 +5,11 @@
 
 """QueryNode generators."""
 
-from typing import Any, Optional, Callable, Union
-import base58
+from typing import Any, Optional, Callable
 import base64
 import datetime
 import re
+import base58
 from deprecated.sphinx import versionadded, versionchanged
 from gql import gql, GraphQLRequest
 from gql.dsl import (
@@ -22,18 +22,18 @@ from gql.dsl import (
 )
 
 import betterproto2
-from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode, PGQL_NoOp
+from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 import pysui.sui.sui_pgql.pgql_fragments as frag
 from pysui.sui.sui_pgql.pgql_validators import TypeValidator
-from pysui.sui.sui_bcs.bcs import TransactionKind, TransactionData, SuiSignature, SuiU64
+from pysui.sui.sui_bcs.bcs import TransactionKind, TransactionData, SuiSignature
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_grpc.suimsgs.google import protobuf as _google_protobuf
 import pysui.sui.sui_grpc.pgrpc_requests as _rn
 from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented, sync_measure
-import pysui.sui.sui_bcs.sui_system_bcs as sui_system_bcs
-import pysui.sui.sui_bcs.sui_checkpoint_bcs as sui_checkpoint_bcs
+from pysui.sui.sui_common.instrumentation import sync_instrumented, sync_measure
+from pysui.sui.sui_bcs import sui_system_bcs
+from pysui.sui.sui_bcs import sui_checkpoint_bcs
 
 
 
@@ -657,7 +657,7 @@ class GetTransactionKindSC(PGQL_QueryNode):
             ),
         ]
         qres = schema.Query.transaction(digest=self.digest).alias("transaction")
-        qres.select(
+        qres.select(  # type: ignore[attr-defined]
             schema.Transaction.kind.select(
                 DSLInlineFragment().on(schema.ProgrammableTransaction).select(
                     inputs=schema.ProgrammableTransaction.inputs.select(
@@ -695,7 +695,8 @@ class GetTransactionKindSC(PGQL_QueryNode):
             kind_dict = tx_block.get("kind") or {}
             result = _encode_tx_kind(kind_dict)
             result.kind = _TX_KIND_MAP.get(
-                kind_dict.get("tx_kind"), sui_prot.TransactionKindKind.KIND_UNKNOWN
+                str(kind_dict.get("tx_kind") or ""),
+                sui_prot.TransactionKindKind.KIND_UNKNOWN,
             )
             return result
 
@@ -799,7 +800,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
         """
         assert isinstance(tx_kind, TransactionKind)
         self.tx_data: TransactionKind = tx_kind
-        self.transaction: sui_prot.Transaction = None
+        self.transaction: Optional[sui_prot.Transaction] = None
         self.tx_meta = tx_meta
         self.tx_skipchecks = skip_checks
         self.tx_do_gas_selection = do_gas_selection
@@ -855,7 +856,7 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                 doGasSelection=self.tx_do_gas_selection,
             )
             .alias("simulate")
-            .select(
+            .select(  # type: ignore[attr-defined]
                 effects=schema.SimulationResult.effects.select(
                     schema.TransactionEffects.digest,
                     schema.TransactionEffects.effectsDigest,
@@ -974,6 +975,9 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
                         name="TransactionData", value=base64.b64decode(txn_bcs_b64)
                     )
             elif txn_bcs_b64:
+                # self.transaction is always set by as_document_node before
+                # encode_fn's closure runs (see BaseSuiGQLClient._qnode_pre_run).
+                assert self.transaction is not None
                 txn_bcs_bytes = base64.b64decode(txn_bcs_b64)
                 self.transaction.bcs = sui_prot.Bcs(
                     name="TransactionData", value=txn_bcs_bytes
@@ -1020,12 +1024,6 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
             with sync_measure("gql.simulate.datetime"):
                 timestamp = _parse_gql_datetime(eff.get("timestamp"))
             checkpoint_seq = (eff.get("checkpoint") or {}).get("sequenceNumber")
-
-            # --- Events (typed — no eventsJson in GQL) ---
-            with sync_measure("gql.simulate.events"):
-                events = _encode_simulate_events(
-                    ((eff.get("events") or {}).get("nodes") or [])
-                )
 
             # --- CommandResult outputs ---
             with sync_measure("gql.simulate.outputs"):
@@ -1088,6 +1086,8 @@ class SimulateTransactionSC(SimulateTransactionKindSC):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.SimulateTransactionSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build rich simulate query; self.transaction is pre-set from BCS bytes."""
+        # __init__ always sets self.transaction to a real Transaction (never None).
+        assert self.transaction is not None
         base_object = frag.BaseObject().fragment(schema)
         std_object = frag.StandardObject().fragment(schema)
         qres = (
@@ -1097,7 +1097,7 @@ class SimulateTransactionSC(SimulateTransactionKindSC):
                 doGasSelection=self.tx_do_gas_selection,
             )
             .alias("simulate")
-            .select(
+            .select(  # type: ignore[attr-defined]
                 effects=schema.SimulationResult.effects.select(
                     schema.TransactionEffects.digest,
                     schema.TransactionEffects.effectsDigest,
@@ -1427,7 +1427,9 @@ class GetAddressCoinBalancesSC(PGQL_QueryNode):
                 schema.Balance.coinType.select(coin_type=schema.MoveType.repr),
             ),
         )
-        qres.select(owner_address=schema.Address.address, balances=balance_connection)
+        qres.select(  # type: ignore[attr-defined]
+            owner_address=schema.Address.address, balances=balance_connection
+        )
 
         return dsl_gql(pg_cursor.fragment(schema), DSLQuery(qres))
 
@@ -2109,14 +2111,14 @@ def _encode_checkpoint_from_raw(cp_dict: dict) -> sui_prot.GetCheckpointResponse
         summary_bcs = sui_prot.Bcs(name="CheckpointSummary", value=_summary_bytes)
         try:
             _decoded_summary = sui_checkpoint_bcs.CheckpointSummaryBCS.deserialize(_summary_bytes)
-            for _c in _decoded_summary.checkpoint_commitments:
+            for _c in _decoded_summary.checkpoint_commitments:  # pylint: disable=no-member
                 summary_commitments.append(
                     sui_prot.CheckpointCommitment(
                         kind=_c.index + 1,
                         digest=base58.b58encode(bytes(_c.value.digest)).decode(),
                     )
                 )
-            _vsd = bytes(_decoded_summary.version_specific_data)
+            _vsd = bytes(_decoded_summary.version_specific_data)  # pylint: disable=no-member
             if _vsd:
                 summary_version_specific_data = _vsd
         except Exception:
@@ -2393,8 +2395,8 @@ def _module_raw_to_proto(mod_dict: dict, package_id: str) -> sui_prot.Module:
         datatypes=datatypes,
         functions=functions,
     )
-    module.functions_has_next = func_cursor.get("hasNextPage", False)
-    module.datatypes_has_next = dt_cursor.get("hasNextPage", False)
+    module.functions_has_next = func_cursor.get("hasNextPage", False)  # type: ignore[attr-defined]
+    module.datatypes_has_next = dt_cursor.get("hasNextPage", False)  # type: ignore[attr-defined]
     return module
 
 
@@ -3283,7 +3285,7 @@ class GetPackageSC(PGQL_QueryNode):
                 version=int(package_version) if package_version is not None else None,
                 modules=modules,
             )
-            pkg.next_page_token = next_token
+            pkg.next_page_token = next_token  # type: ignore[attr-defined]
             return sui_prot.GetPackageResponse(package=pkg)
 
         return _encode
@@ -4156,6 +4158,7 @@ def _encode_simulate_object_changes(
             )
             bcs_b64 = flat_out.get("bcs")
             contents_bcs_b64 = flat_out.get("contents_bcs")
+            storage_rebate_raw = flat_out.get("storage_rebate")
             obj_json = ((out.get("as_move_content") or {}).get("as_object") or {}).get(
                 "content"
             )
@@ -4179,8 +4182,8 @@ def _encode_simulate_object_changes(
                     previous_transaction=flat_out.get("previous_transaction_digest"),
                     has_public_transfer=flat_out.get("has_public_transfer"),
                     storage_rebate=(
-                        int(flat_out.get("storage_rebate"))
-                        if flat_out.get("storage_rebate") is not None
+                        int(storage_rebate_raw)
+                        if storage_rebate_raw is not None
                         else None
                     ),
                     json=(

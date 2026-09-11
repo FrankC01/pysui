@@ -18,7 +18,6 @@ from abc import ABC, abstractmethod
 import base64
 from enum import IntEnum
 from typing import Union
-from pysui.abstracts import AbstractType
 
 
 class SignatureScheme(IntEnum):

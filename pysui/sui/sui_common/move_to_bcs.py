@@ -9,7 +9,6 @@ import ast
 import inspect
 from typing import Any, Optional, Union
 from pathlib import Path
-import uuid
 import logging
 
 from pysui.sui.sui_common.config import PysuiConfiguration
@@ -18,7 +17,7 @@ from pysui.sui.sui_common.factory import client_factory
 from pysui.sui.sui_common.sui_commands import GetMoveDataType as GetMoveDataTypeSC
 from pysui.sui.sui_utils import hexstring_to_sui_id
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-import pysui.sui.sui_common.bcs_ast as bcs_ast
+from pysui.sui.sui_common import bcs_ast
 from pysui.sui.sui_common.bcs_ast import BcsAst
 import pysui.sui.sui_common.mtobcs_types as mtypes
 import pysui.sui.sui_bcs.bcs_stnd as bcse
@@ -32,6 +31,24 @@ def _normalize_fq_type(fq: str) -> str:
     if len(parts) == 3:
         parts[0] = hexstring_to_sui_id(parts[0])
     return "::".join(parts)
+
+
+@sync_instrumented("pysui.sui.sui_common.move_to_bcs._first_stmt_expr")
+def _first_stmt_expr(source: str) -> ast.expr:
+    """Parse a single-expression source string and return its expression node.
+
+    Every call site passes a bare identifier or dotted attribute reference
+    (e.g. a generated class name or scalar type reference), which always
+    parses to a single ``ast.Expr`` statement.
+
+    :param source: Python source consisting of a single expression
+    :type source: str
+    :return: The parsed expression node
+    :rtype: ast.expr
+    """
+    stmt = ast.parse(source).body[0]
+    assert isinstance(stmt, ast.Expr)
+    return stmt.value
 
 _PROTO_SCALAR_BODY_TYPES: frozenset = frozenset({
     sui_prot.OpenSignatureBodyType.ADDRESS,
@@ -178,11 +195,11 @@ class MoveDataType:
         if client:
             self.client = client
         else:
-            self.client: AsyncClientBase = client_factory(cfg)
+            self.client = client_factory(cfg)
         self.target = target
-        self.python_stub = (
-            Path(inspect.getfile(inspect.currentframe())).parent / "mtobcs_pre.py"
-        )
+        current_frame = inspect.currentframe()
+        assert current_frame is not None
+        self.python_stub = Path(inspect.getfile(current_frame)).parent / "mtobcs_pre.py"
         self.children: list[bcs_ast.Node] = []
         self._parsed: bool = False
         self._generated: Any = None
@@ -206,7 +223,7 @@ class MoveDataType:
         if body.type in _PROTO_SCALAR_BODY_TYPES:
             ref = _PROTO_SCALAR_REFS.get(body.type, str(body.type))
             return ref.split(".")[-1] if "." in ref else ref
-        elif body.type == sui_prot.OpenSignatureBodyType.DATATYPE:
+        if body.type == sui_prot.OpenSignatureBodyType.DATATYPE:
             return body.type_name.split("::")[-1]
         return str(body.type)
 
@@ -352,9 +369,11 @@ class MoveDataType:
                     if of_type.type in _PROTO_SCALAR_BODY_TYPES:
                         return self._handle_simple(fname, of_type), []
                     return self._handle_reference(fname, of_type)
-            logger.warning(f"TYPE_PARAMETER {idex} with no concrete params for field '{fname}'")
+            logger.warning(
+                "TYPE_PARAMETER %s with no concrete params for field '%s'", idex, fname
+            )
             return None, []
-        logger.warning(f"Unhandled field type {fbody.type} for '{fname}'")
+        logger.warning("Unhandled field type %s for '%s'", fbody.type, fname)
         return None, []
 
     @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._process_structure")
@@ -366,8 +385,8 @@ class MoveDataType:
         type_parms: dict | None = None,
     ) -> tuple[MoveStructureNode, list[dict]]:
         """."""
-        if type_parms and type_parms.get(self._DECL_TYPE_NAME):
-            struc_name = type_parms.get(self._DECL_TYPE_NAME)
+        if type_parms and (decl_name := type_parms.get(self._DECL_TYPE_NAME)):
+            struc_name = decl_name
         direct_fields: list[MoveFieldNode] = []
         fetch_fields: list[dict] = []
 
@@ -409,7 +428,7 @@ class MoveDataType:
         """Fetch a Move structure declaration and dependencies."""
         type_decl = move_type_decl[self._FETCH_DECL]
         addy, mod, type_name = type_decl.split("::")
-        logger.info(f"Fetching '{type_decl}' definition")
+        logger.info("Fetching '%s' definition", type_decl)
         result = await client.execute(
             command=GetMoveDataTypeSC(package=addy, module_name=mod, type_name=type_name)
         )
@@ -419,15 +438,14 @@ class MoveDataType:
             if descriptor.kind == sui_prot.DatatypeDescriptorDatatypeKind.STRUCT:
                 return self._process_structure(type_decl, type_name, descriptor, move_type_decl)
             return self._process_enum(type_decl, type_name, descriptor, move_type_decl)
-        else:
-            raise ValueError(result.result_string)
+        raise ValueError(result.result_string)
 
     @sync_instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType._root_process")
     def _root_process(
         self, initial_target: mtypes.GenericStructure | mtypes.Structure
     ) -> tuple[str, list, MoveStructureNode | None]:
         """."""
-        more_fetch = []
+        more_fetch: list[dict[str, str]] = []
         children: list = []
         if isinstance(initial_target, mtypes.Structure):
             return initial_target.value_type, more_fetch, None
@@ -550,8 +568,6 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         super().__init__(ast_module)
         self.children: list = children
         self.pre_includes: list[str] = pre_includes or []
-        for pre_i in self.pre_includes:
-            pass
 
     @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator._needs_processing")
     def _needs_processing(
@@ -563,7 +579,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         for idx, child in enumerate(self.children):
             if child.ident == current_cdef:
                 base_index = idx
-            elif child.ident == depend_cdef or child.data == depend_cdef:
+            elif depend_cdef in (child.ident, child.data):
                 if not child.processed:
                     depend_index = idx
         return self.children[depend_index] if depend_index > base_index else None
@@ -581,7 +597,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
     def visit_MoveStructureNode(self, node: MoveStructureNode):
         """Generate a BCS structue class and it's fields."""
         field_targets: ast.List = ast.List([], ast.Load)
-        logger.info(f"Generating '{node.ident}' structure type.")
+        logger.info("Generating '%s' structure type.", node.ident)
         _ctxt = BcsAst.structure_base(
             node.ident, field_targets, f"Generated from {node.data}"
         )
@@ -606,7 +622,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
     def visit_MoveEnumNode(self, node: MoveEnumNode):
         """Generate a BCS enum class and it's variants."""
         field_targets: ast.List = ast.List([], ast.Load)
-        logger.info(f"Generating '{node.ident}' enum type.")
+        logger.info("Generating '%s' enum type.", node.ident)
         _ctxt = BcsAst.enum_base(
             node.ident, field_targets, f"Generated from {node.data}"
         )
@@ -625,14 +641,14 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
     @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveScalarField")
     def visit_MoveScalarField(self, node: MoveScalarField):
         """Generate a reference to a scalar type."""
-        expr = ast.parse(f"{node.data}").body[0].value
+        expr = _first_stmt_expr(f"{node.data}")
         container = self.peek_first()
         container.elts.append(expr)
 
     @sync_instrumented("pysui.sui.sui_common.move_to_bcs._BCSGenerator.visit_MoveStandardField")
     def visit_MoveStandardField(self, node: MoveStandardField):
         """Generate a reference to a scalar type."""
-        expr = ast.parse(f"{node.data}").body[0].value
+        expr = _first_stmt_expr(f"{node.data}")
         container = self.peek_first()
         container.elts.append(expr)
 
@@ -645,7 +661,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         if depedendent := self._needs_processing(current_cdef, node.data):
             self.visit(depedendent)
         # Resume
-        expr = ast.parse(f"{node.data}").body[0].value
+        expr = _first_stmt_expr(f"{node.data}")
         container = self.peek_first()
         container.elts.append(expr)
 
@@ -677,12 +693,15 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         cdef: ast.ClassDef = self.first_from_top(ast.ClassDef)
         opt_name: str = f"{cdef.name}_optional_{node.ident}"
         logger.info(
-            f"Generating '{opt_name}' optional type for '{cdef.name}' field '{node.ident}'"
+            "Generating '%s' optional type for '%s' field '%s'",
+            opt_name,
+            cdef.name,
+            node.ident,
         )
         # node.data is an OpenSignatureBody for the Option<T> field
         type_parm = node.data.type_parameter_instantiation[0]
         ast_type: ast.Name = ast.Name("Any", ast.Load())
-        cdoc: str = None
+        cdoc: Optional[str] = None
         if type_parm.type in _PROTO_SCALAR_BODY_TYPES:
             ref = _PROTO_SCALAR_REFS.get(type_parm.type, str(type_parm.type))
             ast_type = ast.Name(ref, ast.Load())
@@ -698,14 +717,14 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
         elif type_parm.type == sui_prot.OpenSignatureBodyType.VECTOR:
             ast_type = self._resolve_optional_vector_field(opt_name, type_parm)
         elif type_parm.type == sui_prot.OpenSignatureBodyType.TYPE_PARAMETER:
-            logger.warning(f"`{opt_name}` Optional class may require fixup.")
+            logger.warning("`%s` Optional class may require fixup.", opt_name)
             cdoc = "_type Any MUST be replaced with concrete type."
         else:
             raise NotImplementedError(f"Unknown optional type {type_parm.type}")
 
         optdef: ast.ClassDef = BcsAst.optional_type(self, opt_name, ast_type, cdoc)
         self.ast_module.body.append(optdef)
-        expr = ast.parse(opt_name).body[0].value
+        expr = _first_stmt_expr(opt_name)
         container = self.peek_first()
         container.elts.append(expr)
 
@@ -735,8 +754,7 @@ class _BCSGenerator(bcs_ast.NodeVisitor):
                 self.visit(mvar)
             _ = self.get()
             self.ast_module.body.append(_ctxt)
-            expr: ast.Expr = ast.parse(iename).body[0]
-            tuple_ast.elts.append(expr.value)
+            tuple_ast.elts.append(_first_stmt_expr(iename))
 
         else:
             self.visit(node.children[0])

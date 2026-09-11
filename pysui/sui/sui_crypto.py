@@ -14,14 +14,12 @@
 
 """Sui Crpto Keys and Keypairs."""
 
-import os
 import base64
 import binascii
 import hashlib
-import json
 from enum import IntEnum
 from typing import Optional, Union
-from deprecated.sphinx import versionadded, versionchanged, deprecated
+from deprecated.sphinx import versionadded, versionchanged
 import pysui_fastcrypto as pfc
 
 
@@ -47,7 +45,7 @@ from pysui.sui.sui_bcs.bcs import (
     MsSecp256r1PublicKey,
     MultiSignature,
 )
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 class IntentScope(IntEnum):
@@ -406,7 +404,7 @@ class BaseMultiSig:
             hit_indexes = [self._public_keys.index(i) for i in pub_keys]
             # If all inbound pubkeys have reference to item in ms list
             if len(hit_indexes) == len(pub_keys):
-                if sum([self._weights[x] for x in hit_indexes]) >= self._threshold:
+                if sum(self._weights[x] for x in hit_indexes) >= self._threshold:
                     return hit_indexes
         raise ValueError("Keys and weights for signing do not meet thresholds")
 
@@ -644,7 +642,7 @@ def create_new_keypair(
     :rtype: tuple[str, KeyPair]
     """
     if not isinstance(scheme, SignatureScheme):
-        raise ValueError(f"Not a Sui signature scheme type")
+        raise ValueError("Not a Sui signature scheme type")
     if scheme > 2:
         raise ValueError(f"Signature Scheme {scheme.name} not supported")
     if not word_counts in {12, 15, 18, 21, 24}:

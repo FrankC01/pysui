@@ -3,6 +3,9 @@
 
 # -*- coding: utf-8 -*-
 
+# dataclasses_json + dataclasses.dataclass decorator stacking confuses mypy's overload resolution for dataclass_json() — verified false positive, see Task #107 handoff (.claude/session-handoff-task107.md)
+# mypy: disable-error-code="call-overload"
+
 """Shared result types used across GQL and gRPC protocol implementations."""
 
 import dataclasses

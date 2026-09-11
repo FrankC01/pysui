@@ -13,7 +13,6 @@
 """pysui package."""
 import sys
 import logging
-from pysui.version import __version__
 
 logger = logging.getLogger("pysui")
 if not logging.getLogger().handlers:
@@ -26,9 +25,10 @@ if sys.version_info < (3, 10):
 
 # Convenience imports
 
-from typing import Any
+from typing import Any, Optional
 
 from pysui.abstracts.client_rpc import RpcResult
+from pysui.version import __version__
 
 
 class SuiRpcResult(RpcResult):
@@ -38,12 +38,15 @@ class SuiRpcResult(RpcResult):
     """
 
     def __init__(
-        self, result_status: bool, result_string: str, result_data: Any = None
+        self,
+        result_status: bool,
+        result_string: Optional[str],
+        result_data: Any = None,
     ) -> None:
         """__init__ SuiRpcResult constructor."""
         super().__init__()
         self._status: bool = result_status
-        self._result_str: str = result_string
+        self._result_str: str = result_string if result_string is not None else ""
         self._data: Any = result_data
 
     def is_ok(self) -> bool:
@@ -63,10 +66,6 @@ class SuiRpcResult(RpcResult):
     def result_string(self) -> str:
         """Get result string."""
         return self._result_str
-
-from .version import __version__
-
-SDK_CURRENT_VERSION: list[str] = [int(x) for x in __version__.split(".")]
 
 from pysui.sui.sui_common.config import PysuiConfiguration
 from pysui.sui.sui_common.config.confgroup import GroupProtocol, NetworkType
@@ -135,6 +134,10 @@ from pysui.sui.sui_common.sui_commands import (
     VerifyTransactionSignature,
     VerifyPersonalMessageSignature,
 )
+
+from .version import __version__
+
+SDK_CURRENT_VERSION: list[str] = [int(x) for x in __version__.split(".")]
 
 __all__ = [
     # Version / core

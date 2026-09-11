@@ -5,14 +5,23 @@
 
 """Core Sui BCS Types."""
 
+# pylint: disable=no-member
+# Canoser's Struct/RustEnum/RustOptional base classes (see pysui.sui.sui_bcs.pysui_bcs)
+# set instance attributes dynamically from each class's `_fields` list at runtime
+# (canoser.Struct.__init__ -> initailize_fields_type() -> setattr() in a loop).
+# Pylint's static analysis parses the class body but cannot see this dynamic
+# attribute assignment, and reports every field access in this file as a false
+# positive no-member. Verified false positive, not disabled blind — see Task #107
+# handoff (.claude/session-handoff-task107.md) for the full per-class audit.
+
 import binascii
 import copy
 import secrets
 import uuid
-from typing import Any, Union
+from typing import Any, TypeAlias, Union
 import json
 import canoser
-from deprecated.sphinx import deprecated, versionadded, versionchanged
+from deprecated.sphinx import versionadded, versionchanged
 
 from pysui.abstracts.client_keypair import PublicKey, SignatureScheme
 from pysui.sui.sui_utils import (
@@ -85,20 +94,22 @@ class Intent(canoser.Struct):
 class VariableArrayU8(canoser.Struct):
     """Variable length array"""
 
-    _fields = [("Array", [])]
+    _fields: list = [("Array", [])]
 
 
 class Variable(canoser.Struct):
     """."""
 
-    _fields = []
+    _fields: list = []
 
     @classmethod
     def bcs_var_length_field(
         cls, base_class: canoser.Struct, ready_data: list[int]
     ) -> "Variable":
         """."""
-        new_class = type(f"a{uuid.uuid4()}", (Variable,), {"_fields": []})
+        new_class: type["Variable"] = type(
+            f"a{uuid.uuid4()}", (Variable,), {"_fields": []}
+        )
         new_class._fields.append(("Data", [base_class, len(ready_data), False]))
         return new_class(ready_data)
 
@@ -108,7 +119,9 @@ class Variable(canoser.Struct):
     ) -> "Variable":
         """."""
         res = encoder(ready_data)
-        new_class = type(f"a{uuid.uuid4()}", (Variable,), {"_fields": []})
+        new_class: type["Variable"] = type(
+            f"a{uuid.uuid4()}", (Variable,), {"_fields": []}
+        )
         new_class._fields.append(("Data", [base_class, len(res), True]))
         return new_class(res)
 
@@ -127,7 +140,7 @@ class IntentMessage(canoser.Struct):
 class ArrayVar(canoser.Struct):
     """."""
 
-    _fields = []
+    _fields: list = []
 
     @classmethod
     def bcs_array_for(cls, *, base_class, ready_data: list, depth: int = 0):
@@ -284,13 +297,13 @@ class Uint256(canoser.int_type.IntType):  # type: ignore
         return value.to_bytes(32, byteorder="little", signed=False)
 
 
-U8 = canoser.Uint8
-U16 = canoser.Uint16
-U32 = canoser.Uint32
-U53 = Uint53
-U64 = canoser.Uint64
-U128 = canoser.Uint128
-U256 = Uint256
+U8: TypeAlias = canoser.Uint8
+U16: TypeAlias = canoser.Uint16
+U32: TypeAlias = canoser.Uint32
+U53: TypeAlias = Uint53
+U64: TypeAlias = canoser.Uint64
+U128: TypeAlias = canoser.Uint128
+U256: TypeAlias = Uint256
 
 
 @versionadded(version="0.19.0", reason="Added")
@@ -439,12 +452,11 @@ class TypeTag(canoser.RustEnum):
         """Render this TypeTag as its canonical Move type string."""
         if self.enum_name == "Struct":
             return self.value.to_type_str()
-        elif self.enum_name == "Vector":
+        if self.enum_name == "Vector":
             return self.value[0].enum_name
-        elif not self.value:
+        if not self.value:
             return self.enum_name
-        else:
-            raise ValueError(f"Unexpected {self.to_json()}")
+        raise ValueError(f"Unexpected {self.to_json()}")
 
 
 @versionchanged(version="0.17.1", reason="Fixed nested types.")

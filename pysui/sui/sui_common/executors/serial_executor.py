@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
 
-from pysui.sui.sui_common.txn_signing import SignerBlock, SigningMultiSig
+from pysui.sui.sui_common.txn_signing import SignerBlock
 from pysui.sui.sui_common.executors.exec_types import (
     ExecutionSkipped,
     ExecutorError,
@@ -32,7 +32,7 @@ from pysui.sui.sui_common.executors.gas_utils import (
     update_tracked_balance_from_accumulator,
     run_replenishment,
 )
-from pysui.sui.sui_common.executors._queue_types import _SENTINEL, _QueueItem
+from pysui.sui.sui_common.executors._queue_types import _SENTINEL, _QueueItem, _Sentinel
 from pysui.sui.sui_common.validators import valid_sui_address
 from pysui.sui.sui_common.txn_tx_argparse import TxnArgMode
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
@@ -96,11 +96,13 @@ class SerialQueueProcessor:
     @property
     @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor.sender_str")
     def sender_str(self) -> str:
+        """Return the signing address as a string."""
         return self._signing_block.sender_str
 
     @property
     @sync_instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor.tracked_balance")
     def tracked_balance(self) -> int:
+        """Return the current tracked gas/address balance."""
         return self._tracked_balance
 
     @instrumented("pysui.sui.sui_common.executors.serial_executor.SerialQueueProcessor.add_funds")
@@ -297,7 +299,7 @@ class SerialExecutor:
         self._dead: bool = False
         self._closing: bool = False
         self._task: asyncio.Task[None] | None = None
-        self._queue: asyncio.Queue[_QueueItem | object] = asyncio.Queue()
+        self._queue: asyncio.Queue[_QueueItem | _Sentinel] = asyncio.Queue()
         signer_block = SignerBlock(sender=options.sender)
         self._qp = SerialQueueProcessor(
             client=client,

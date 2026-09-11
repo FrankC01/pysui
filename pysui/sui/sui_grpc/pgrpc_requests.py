@@ -3,12 +3,15 @@
 
 # -*- coding: utf-8 -*-
 
+# dataclasses_json + dataclasses.dataclass decorator stacking confuses mypy's overload resolution for dataclass_json() — verified false positive, see Task #107 handoff (.claude/session-handoff-task107.md)
+# mypy: disable-error-code="call-overload"
+
 """pysui gRPC Requests"""
 
-import base58
 import base64
 import dataclasses
 from typing import Callable, Optional
+import base58
 from deprecated.sphinx import versionadded
 import dataclasses_json
 import betterproto2
@@ -19,7 +22,6 @@ from pysui.sui.sui_bcs import bcs
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
 from pysui.sui.sui_common.instrumentation import (
-    instrumented,
     sync_instrumented,
     sync_measure,
 )
@@ -59,7 +61,7 @@ class GetChainIdentifierSC(GetServiceInfo):
 class GetCheckpoint(absreq.PGRPC_Request):
     """Query for retrieving current or specific checkpoints."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.GetCheckpointResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.GetCheckpointResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCheckpoint.__init__")
     def __init__(
@@ -121,7 +123,7 @@ class GetCheckpointByDigest(GetCheckpoint):
 class GetEpoch(absreq.PGRPC_Request):
     """Query for retrieving current or speciic Epochs."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.Epoch
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.Epoch
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetEpoch.__init__")
     def __init__(
@@ -215,7 +217,7 @@ class GetBasicCurrentEpochInfo(GetEpoch):
 class GetProtocolConfig(GetEpoch):
     """GetProtocolConfig returns the protocol configuration for a specific version or current."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ProtocolConfig
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ProtocolConfig
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetProtocolConfig.__init__")
     def __init__(self, *, version: Optional[int] = None):
@@ -248,7 +250,7 @@ OBJECT_DEFAULT_FIELDS: list[str] = [
 class GetObject(absreq.PGRPC_Request):
     """Query to retrieve the current version of an object."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.Object
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.Object
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObject.__init__")
     def __init__(
@@ -279,7 +281,7 @@ class GetObject(absreq.PGRPC_Request):
 class GetPastObject(absreq.PGRPC_Request):
     """Query to retrieve a specific version of an object."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.Object
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.Object
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPastObject.__init__")
     def __init__(
@@ -350,7 +352,7 @@ class GetPastObjectSC(GetPastObject):
 class GetMultipleObjects(absreq.PGRPC_Request):
     """Query to retrieve multiple objects current state."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetObjectsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.BatchGetObjectsResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMultipleObjects.__init__")
     def __init__(
@@ -501,7 +503,7 @@ class GetObjectSummarySC(GetObject):
                 owner=None,
                 initialSharedVersion=str(obj.owner.version or 0),
             )
-        elif owner_kind == "CONSENSUS_ADDRESS":
+        if owner_kind == "CONSENSUS_ADDRESS":
             return ObjectSummary(
                 objectId=oid_str,
                 version=str(version),
@@ -509,26 +511,25 @@ class GetObjectSummarySC(GetObject):
                 owner=None,
                 initialSharedVersion=str(obj.owner.version or 0),
             )
-        elif owner_kind in ("ADDRESS", "OBJECT"):
+        if owner_kind in ("ADDRESS", "OBJECT"):
             return ObjectSummary(
                 objectId=oid_str,
                 version=str(version),
                 digest=digest_str,
                 owner=obj.owner.address if owner_kind == "ADDRESS" else None,
             )
-        else:
-            return ObjectSummary(
-                objectId=oid_str,
-                version=str(version),
-                digest=digest_str,
-                owner=None,
-            )
+        return ObjectSummary(
+            objectId=oid_str,
+            version=str(version),
+            digest=digest_str,
+            owner=None,
+        )
 
 
 class GetDynamicFields(absreq.PGRPC_Request):
     """Get dynamic fields of object."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ListDynamicFieldsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ListDynamicFieldsResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetDynamicFields.__init__")
     def __init__(
@@ -565,7 +566,7 @@ class GetDynamicFields(absreq.PGRPC_Request):
 class GetMultiplePastObjects(absreq.PGRPC_Request):
     """Retrieve information about multiple objects by object ids."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetObjectsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.BatchGetObjectsResponse
 
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetMultiplePastObjects.__init__"
@@ -652,7 +653,7 @@ def _is_coin_reservation(obj: sui_prot.Object) -> bool:
 class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
     """Query to retrieve owned object by type."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ListOwnedObjectsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ListOwnedObjectsResponse
 
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetObjectsOwnedByAddress.__init__"
@@ -901,7 +902,7 @@ class GetDelegatedStakes(GetStaked):
 class GetCoinMetaData(absreq.PGRPC_Request):
     """Query to return information on specific coin type."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.GetCoinInfoResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.GetCoinInfoResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetCoinMetaData.__init__")
     def __init__(
@@ -929,7 +930,7 @@ class GetCoinMetaData(absreq.PGRPC_Request):
 class GetAddressCoinBalance(absreq.PGRPC_Request):
     """Query to fetch the total address and coin balance for specific coin type."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.GetBalanceResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.GetBalanceResponse
 
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalance.__init__"
@@ -963,7 +964,7 @@ class GetAddressCoinBalance(absreq.PGRPC_Request):
 class GetAddressCoinBalances(absreq.PGRPC_Request):
     """Query to retrieve the total balance for all types for owner."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ListBalancesResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ListBalancesResponse
 
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetAddressCoinBalances.__init__"
@@ -1000,7 +1001,7 @@ class GetAddressCoinBalances(absreq.PGRPC_Request):
 class GetTransaction(absreq.PGRPC_Request):
     """Query to retrieve transaction details by it's digest."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ExecutedTransaction
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ExecutedTransaction
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransaction.__init__")
     def __init__(
@@ -1033,7 +1034,7 @@ class GetTransaction(absreq.PGRPC_Request):
 class GetTransactions(absreq.PGRPC_Request):
     """Query to retrieve multiple transaction details by their digests."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.BatchGetTransactionsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.BatchGetTransactionsResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetTransactions.__init__")
     def __init__(
@@ -1153,7 +1154,7 @@ class GetTransactionKindSC(GetTransaction):
 class ExecuteTransaction(absreq.PGRPC_Request):
     """Executes a signed transaction block on the chain."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ExecuteTransactionResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ExecuteTransactionResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ExecuteTransaction.__init__")
     def __init__(
@@ -1217,7 +1218,7 @@ class ExecuteTransaction(absreq.PGRPC_Request):
 class SimulateTransaction(absreq.PGRPC_Request):
     """Simulates executnig a transaction block on the chain."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.SimulateTransactionResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.SimulateTransactionResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SimulateTransaction.__init__")
     def __init__(
@@ -1269,7 +1270,7 @@ class SimulateTransaction(absreq.PGRPC_Request):
 class SimulateTransactionKind(absreq.PGRPC_Request):
     """Simulates executing a transaction block (from a TransactionKind) on the chain."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.SimulateTransactionResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.SimulateTransactionResponse
 
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.SimulateTransactionKind.__init__"
@@ -1364,7 +1365,7 @@ class SimulateTransactionKind(absreq.PGRPC_Request):
 class GetPackageVersions(absreq.PGRPC_Request):
     """Query a Move package's versions by it's storage ID."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ListPackageVersionsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ListPackageVersionsResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPackageVersions.__init__")
     def __init__(
@@ -1399,7 +1400,7 @@ class GetPackageVersions(absreq.PGRPC_Request):
 class GetPackage(absreq.PGRPC_Request):
     """Query a Move package by it's ID."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.GetPackageResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.GetPackageResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPackage.__init__")
     def __init__(
@@ -1425,7 +1426,7 @@ class GetPackage(absreq.PGRPC_Request):
 class GetMoveDataType(absreq.PGRPC_Request):
     """Query a Move module's DataType by its name."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.GetDatatypeResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.GetDatatypeResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetMoveDataType.__init__")
     def __init__(self, *, package: str, module_name: str, type_name: str) -> None:
@@ -1513,16 +1514,15 @@ class GetStructures(GetPackage):
         )
         if result:
             return MoveStructuresGRPC(result[0].datatypes)
-        else:
-            raise ValueError(
-                f"Module '{self.module_name}' not found for {self.package_id}"
-            )
+        raise ValueError(
+            f"Module '{self.module_name}' not found for {self.package_id}"
+        )
 
 
 class GetFunction(absreq.PGRPC_Request):
     """Query a Move module's function by it's name."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.GetFunctionResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.GetFunctionResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetFunction.__init__")
     def __init__(self, *, package: str, module_name: str, function_name: str) -> None:
@@ -1563,10 +1563,9 @@ class GetFunctions(GetPackage):
         )
         if result:
             return MoveFunctionsGRPC(result[0].functions)
-        else:
-            raise ValueError(
-                f"Module '{self.module_name}' not found for {self.package_id}"
-            )
+        raise ValueError(
+            f"Module '{self.module_name}' not found for {self.package_id}"
+        )
 
 
 class GetModule(GetPackage):
@@ -1586,16 +1585,15 @@ class GetModule(GetPackage):
         )
         if result:
             return result[0]
-        else:
-            raise ValueError(
-                f"Module '{self.module_name}' not found for {self.package_id}"
-            )
+        raise ValueError(
+            f"Module '{self.module_name}' not found for {self.package_id}"
+        )
 
 
 class SubscribeCheckpoints(absreq.PGRPC_Request):
     """Subscribe to a feed of checkpoints."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeCheckpointsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.SubscribeCheckpointsResponse
 
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.SubscribeCheckpoints.__init__"
@@ -1628,7 +1626,7 @@ class SubscribeCheckpoints(absreq.PGRPC_Request):
 class SubscribeTransactions(absreq.PGRPC_Request):
     """Subscribe to a feed of finalized transactions."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeTransactionsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.SubscribeTransactionsResponse
 
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.SubscribeTransactions.__init__"
@@ -1661,7 +1659,7 @@ class SubscribeTransactions(absreq.PGRPC_Request):
 class SubscribeEvents(absreq.PGRPC_Request):
     """Subscribe to a feed of emitted events."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.SubscribeEventsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.SubscribeEventsResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.SubscribeEvents.__init__")
     def __init__(
@@ -1690,7 +1688,7 @@ class SubscribeEvents(absreq.PGRPC_Request):
 class ListCheckpoints(absreq.PGRPC_Request):
     """Query for a paginated stream of checkpoints, resumable via watermark cursor."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ListCheckpointsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ListCheckpointsResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ListCheckpoints.__init__")
     def __init__(
@@ -1745,7 +1743,7 @@ class ListCheckpoints(absreq.PGRPC_Request):
 class ListTransactions(absreq.PGRPC_Request):
     """Query for a paginated stream of transactions, resumable via watermark cursor."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ListTransactionsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ListTransactionsResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ListTransactions.__init__")
     def __init__(
@@ -1799,7 +1797,7 @@ class ListTransactions(absreq.PGRPC_Request):
 class ListEvents(absreq.PGRPC_Request):
     """Query for a paginated stream of events, resumable via watermark cursor."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ListEventsResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ListEventsResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.ListEvents.__init__")
     def __init__(
@@ -1853,7 +1851,7 @@ class ListEvents(absreq.PGRPC_Request):
 class VerifySignature(absreq.PGRPC_Request):
     """Verify a signature."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.VerifySignatureResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.VerifySignatureResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.VerifySignature.__init__")
     def __init__(
@@ -1936,7 +1934,7 @@ class VerifySignature(absreq.PGRPC_Request):
 class GetNameServiceAddress(absreq.PGRPC_Request):
     """Resolve a Sui name-service name to an address."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.LookupNameResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.LookupNameResponse
 
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceAddress.__init__"
@@ -1966,7 +1964,7 @@ class GetNameServiceAddress(absreq.PGRPC_Request):
 class GetNameServiceNames(absreq.PGRPC_Request):
     """Resolve a Sui address to its name-service name(s)."""
 
-    RESULT_TYPE: betterproto2.Message = sui_prot.ReverseLookupNameResponse
+    RESULT_TYPE: type[betterproto2.Message] = sui_prot.ReverseLookupNameResponse
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetNameServiceNames.__init__")
     def __init__(self, *, address: str | None = None):

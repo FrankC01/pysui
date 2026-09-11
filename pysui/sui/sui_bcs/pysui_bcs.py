@@ -5,7 +5,15 @@
 
 """Pysui BCS Base abstraction supporting dataclass_json."""
 
-import binascii
+# pylint: disable=invalid-field-call
+# dataclasses.field() is used here as an element of tuples passed into
+# dataclasses.make_dataclass()'s `fields` argument (the documented 3-tuple
+# form: (name, type, Field)) — the canonical, correct usage. Pylint's static
+# checker can't trace field() through the intermediate kvp_list.append(...)
+# step to see it eventually reaches make_dataclass(), and flags every call as
+# invalid-field-call. Verified false positive — see Task #107 handoff
+# (.claude/session-handoff-task107.md) for the audit.
+
 import dataclasses
 from functools import partial
 import json
@@ -17,8 +25,6 @@ import dataclasses_json
 
 class BCS_Struct(canoser.Struct):
     """BCS Structure base supporting dataclass_json conversion."""
-
-    pass
 
     @staticmethod
     def from_json(
@@ -41,15 +47,14 @@ class BCS_Struct(canoser.Struct):
         kvp_list: list[tuple[str, Any] | tuple[str, Any, Any]] = []
         type_class: list[_Classification] = []
         for enum_name, enum_value in kvs._fields:
-            if enum_value == None:
+            if enum_value is None:
                 raise ValueError(f"Malformed field {enum_name}")
-            else:
-                typeclass: _Classification = BCS_BASE.classify(enum_name, enum_value)
-                type_class.append(typeclass)
-                kvp_list.append(
-                    (enum_name, typeclass.dc_sig, dataclasses.field(default=None))
-                )
-        dc = dataclasses_json.dataclass_json(
+            typeclass: _Classification = BCS_BASE.classify(enum_name, enum_value)
+            type_class.append(typeclass)
+            kvp_list.append(
+                (enum_name, typeclass.dc_sig, dataclasses.field(default=None))
+            )
+        dc: Any = dataclasses_json.dataclass_json(
             dataclasses.make_dataclass(kvs.__name__, kvp_list),
             undefined=dataclasses_json.Undefined.EXCLUDE,
         )
@@ -61,8 +66,6 @@ class BCS_Struct(canoser.Struct):
 
 class BCS_Enum(canoser.RustEnum):
     """BCS Enum base supporting dataclass_json conversion."""
-
-    pass
 
     @staticmethod
     def from_json(
@@ -97,9 +100,9 @@ class BCS_Enum(canoser.RustEnum):
         kvp_list: list[tuple[str, Any] | tuple[str, Any, Any]] = []
         type_class: list[_Classification] = []
         for enum_name, enum_value in kvs._enums:
-            if enum_value == None:
+            if enum_value is None:
                 type_class.append(
-                    _Classification(enum_name, Optional[Any], 0, False, None)
+                    _Classification(enum_name, Optional[Any], 0, False, None, None)
                 )
                 kvp_list.append(
                     (enum_name, Optional[Any], dataclasses.field(default=None))
@@ -114,7 +117,7 @@ class BCS_Enum(canoser.RustEnum):
                         dataclasses.field(default=None),
                     )
                 )
-        dc = dataclasses_json.dataclass_json(
+        dc: Any = dataclasses_json.dataclass_json(
             dataclasses.make_dataclass(kvs.__name__, kvp_list),
             undefined=dataclasses_json.Undefined.EXCLUDE,
         )
@@ -126,8 +129,6 @@ class BCS_Enum(canoser.RustEnum):
 
 class BCS_Optional(canoser.RustOptional):
     """BCS Optional base supporting dataclass_json conversion."""
-
-    pass
 
     @staticmethod
     def from_json(
@@ -158,7 +159,7 @@ class BCS_Optional(canoser.RustOptional):
             ("value", Optional[typeclass.dc_sig], dataclasses.field(default=None))
         ]
 
-        dc = dataclasses_json.dataclass_json(
+        dc: Any = dataclasses_json.dataclass_json(
             dataclasses.make_dataclass(kvs.__name__, kvp_list),
             undefined=dataclasses_json.Undefined.EXCLUDE,
         )
@@ -239,7 +240,7 @@ class BCS_BASE:
         """Convert an inbound type value to expected kind as classified."""
         if value_type == str and classtype.scalar_type == int:
             return [int(n, base=16) for n in in_value]
-        elif value_type == int and classtype.scalar_type == str:
+        if value_type == int and classtype.scalar_type == str:
             return "".join([hex(num)[2:] for num in in_value])
         raise NotImplementedError(
             f"{value_type} to {classtype.scalar_type} not supported yet."
@@ -259,7 +260,7 @@ class BCS_BASE:
                 ldepth += 1
         the_atype = atype.__name__
         iscalar = False
-        iscalar_type = None
+        iscalar_type: Optional[type] = None
         match the_atype:
             case "str" | "StrT":
                 iscalar = True
@@ -281,6 +282,6 @@ class BCS_BASE:
                     raise NotImplementedError(f"{the_atype} not handled in classify")
         _class = _Classification(in_name, atype, ldepth, iscalar, iscalar_type, atype)
         for _ in range(ldepth):
-            atype = list[atype]
+            atype = list[atype]  # type: ignore[valid-type]  # dynamic type construction, canoser class reference — see Task #107 handoff
         _class.dc_sig = atype
         return _class

@@ -64,10 +64,12 @@ class SealClient:
 
     @property
     def pysui_client(self) -> AsyncClientBase:
+        """Return the underlying pysui async client."""
         return self._client
 
     @property
     def config(self) -> ZkSealConfig:
+        """Return the active ZkSealConfig."""
         return self._config
 
     def credentials(self, *, session_minutes: int = 30) -> SealCredentials:

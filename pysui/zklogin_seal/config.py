@@ -3,6 +3,13 @@
 
 # -*- coding: utf-8 -*-
 
+# dataclasses_json + dataclasses.dataclass decorator stacking confuses mypy's overload resolution for dataclass_json() — verified false positive, see Task #107 handoff (.claude/session-handoff-task107.md)
+# Same root cause also surfaces as attr-defined on _ZkSealConfigModel.from_json()/.to_json(): the
+# dataclass_json() decorator stub returns Type[T] unchanged (see dataclasses_json/api.py), so mypy
+# cannot see the from_json/to_json/to_dict/from_dict mixin methods it adds at runtime (verified via
+# hasattr at runtime — both exist). Independently re-verified 2026-09-11.
+# mypy: disable-error-code="call-overload, attr-defined"
+
 """ZkSeal configuration: ZkSealConfig, ZkSealNetworkGroup, ZkLoginProvider, SealKeyServer, SealKeyServerSet."""
 
 import dataclasses
@@ -250,7 +257,7 @@ class ZkSealConfig:
             ]
         )
         config_file.parent.mkdir(parents=True, exist_ok=True)
-        config_file.write_text(model.to_json(indent=2))
+        config_file.write_text(model.to_json(indent=2))  # pylint: disable=no-member
 
     def _migrate_if_needed(self) -> None:
         """Bump ZkSealConfig schema version and persist if a backlevel config was loaded."""
@@ -716,7 +723,7 @@ class ZkSealConfig:
             (
                 s
                 for s in server_set.servers
-                if s.alias == alias_or_object_id or s.object_id == alias_or_object_id
+                if alias_or_object_id in (s.alias, s.object_id)
             ),
             None,
         )

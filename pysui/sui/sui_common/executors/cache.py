@@ -6,7 +6,6 @@
 """Sui Transaction Executor Caches."""
 
 from abc import ABC, abstractmethod
-import asyncio
 import logging
 from typing import TYPE_CHECKING, Any, Literal, Union
 from dataclasses import dataclass

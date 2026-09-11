@@ -9,8 +9,7 @@ from typing import Optional, Union
 from pysui import PysuiConfiguration
 from pysui.sui.sui_crypto import MultiSig, BaseMultiSig, SuiPublicKey
 
-import pysui.sui.sui_pgql.pgql_types as pgql_type
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 class SigningMultiSig:
@@ -69,7 +68,7 @@ class SignerBlock:
             else self._sender.signing_address
         )
 
-    @sender.setter
+    @sender.setter  # type: ignore[no-redef]
     @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.sender")
     def sender(self, new_sender: Union[str, SigningMultiSig]):
         """Set the sender to use in signing the transaction."""
@@ -94,7 +93,7 @@ class SignerBlock:
             else self._sponsor.signing_address
         )
 
-    @sponsor.setter
+    @sponsor.setter  # type: ignore[no-redef]
     @sync_instrumented("pysui.sui.sui_common.txn_signing.SignerBlock.sponsor")
     def sponsor(self, new_sponsor: Union[str, SigningMultiSig]):
         """Set the sponsor to used to pay for transaction. This also signs the transaction."""
@@ -111,9 +110,7 @@ class SignerBlock:
             raise ValueError(
                 "Both SuiTransaction sponor and sender are null. Complete at least one before execute."
             )
-        if isinstance(who_pays, str):
-            who_pays = who_pays
-        else:
+        if not isinstance(who_pays, str):
             who_pays = who_pays.signing_address
 
         return who_pays

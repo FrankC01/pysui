@@ -162,10 +162,11 @@ def decode_checkpoint_contents_v2(payload: bytes) -> list:
     def _uleb128(data: bytes, pos: int):
         val, shift = 0, 0
         while True:
-            b = data[pos]; pos += 1
+            b = data[pos]
+            pos += 1
             val |= (b & 0x7F) << shift
             shift += 7
-            if not (b & 0x80):
+            if not b & 0x80:
                 return val, pos
 
     pos = 0
@@ -173,19 +174,24 @@ def decode_checkpoint_contents_v2(payload: bytes) -> list:
     results = []
     for _ in range(count):
         tx_len, pos = _uleb128(payload, pos)
-        tx_digest = bytes(payload[pos : pos + tx_len]); pos += tx_len
+        tx_digest = bytes(payload[pos : pos + tx_len])
+        pos += tx_len
         eff_len, pos = _uleb128(payload, pos)
-        eff_digest = bytes(payload[pos : pos + eff_len]); pos += eff_len
+        eff_digest = bytes(payload[pos : pos + eff_len])
+        pos += eff_len
         sig_count, pos = _uleb128(payload, pos)
         sigs: list = []
         alias_versions: list = []
         for _ in range(sig_count):
             sig_len, pos = _uleb128(payload, pos)
-            sig_bytes = bytes(payload[pos : pos + sig_len]); pos += sig_len
+            sig_bytes = bytes(payload[pos : pos + sig_len])
+            pos += sig_len
             sigs.append(sig_bytes)
-            opt = payload[pos]; pos += 1
+            opt = payload[pos]
+            pos += 1
             if opt == 1:
-                version = struct.unpack_from("<Q", payload, pos)[0]; pos += 8
+                version = struct.unpack_from("<Q", payload, pos)[0]
+                pos += 8
                 alias_versions.append(version)
             else:
                 alias_versions.append(None)

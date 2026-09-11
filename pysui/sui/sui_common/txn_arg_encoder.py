@@ -16,6 +16,7 @@ from abc import ABC, abstractmethod
 from functools import singledispatch
 from typing import Any, Optional
 
+import canoser
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txn_pure import PureInput
 from pysui.sui.sui_utils import serialize_uint32_as_uleb128
@@ -32,7 +33,7 @@ from pysui.sui.sui_pgql.pgql_types import (  # noqa: E402
 
 # ── Scalar lookup tables ────────────────────────────────────────────────────
 
-_UINT_BCS: dict[str, type] = {
+_UINT_BCS: dict[str, type[canoser.base.Base]] = {
     "u8": bcs.U8,
     "u16": bcs.U16,
     "u32": bcs.U32,
@@ -399,7 +400,6 @@ class _BaseArgParser(ABC):
         gRPC: fetches via gRPC GetObject request.
         UnResolvingArgParser: defers resolution.
         """
-        ...
 
     async def build_args(
         self,

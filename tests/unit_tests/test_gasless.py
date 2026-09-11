@@ -39,6 +39,11 @@ class _MockAsyncClient(AsyncClientBase):
 
     _protocol: str = "gql"
 
+    @property
+    def config(self):
+        """Stub."""
+        return None
+
     async def transaction(self, **kwargs):
         """Stub."""
         return None

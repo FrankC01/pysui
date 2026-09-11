@@ -5,7 +5,6 @@
 
 """zkLogin client: ZkClient, ZkSession, and generate_user_salt utility."""
 
-import base64
 import secrets
 from enum import Enum
 from typing import Optional
@@ -103,21 +102,25 @@ class ZkSession:
     @property
     @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.nonce")
     def nonce(self) -> str:
+        """Return the zkLogin nonce for this session."""
         return self._nonce
 
     @property
     @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.address")
     def address(self) -> Optional[str]:
+        """Return the derived zkLogin address, if available."""
         return self._address
 
     @property
     @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.salt")
     def salt(self) -> str:
+        """Return the user salt from the owning client."""
         return self._client.salt
 
     @property
     @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkSession.keypair")
     def keypair(self) -> ZkLoginKeyPair:
+        """Return the ephemeral zkLogin keypair; raises if get_proof() has not yet succeeded."""
         if self._keypair is None:
             raise RuntimeError("keypair unavailable until get_proof() succeeds")
         return self._keypair
@@ -232,11 +235,13 @@ class ZkClient:
     @property
     @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkClient.salt")
     def salt(self) -> str:
+        """Return the configured user salt."""
         return self._salt
 
     @property
     @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkClient.config")
     def config(self) -> ZkSealConfig:
+        """Return the active ZkSealConfig."""
         return self._config
 
     @sync_instrumented("pysui.zklogin_seal.zklogin_client.ZkClient.session")
