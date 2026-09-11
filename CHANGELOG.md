@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- [bug](https://github.com/FrankC01/pysui/issues/410) serial_executor.py has no retry/rebuild for equivocation-class failures
+
 ### Changed
 
 - [change](https://github.com/FrankC01/pysui/issues/411) Code quality: pylint score improved 8.66 → 9.63/10; 

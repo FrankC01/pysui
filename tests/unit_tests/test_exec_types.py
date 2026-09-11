@@ -142,13 +142,17 @@ class TestGasStatus:
         from pysui.sui.sui_common.executors.exec_types import GasStatus
         assert GasStatus.NEED_FUNDS_AND_RETRY.value == "need_funds_and_retry"
 
+    def test_equivocation_retry_value(self):
+        from pysui.sui.sui_common.executors.exec_types import GasStatus
+        assert GasStatus.EQUIVOCATION_RETRY.value == "equivocation_retry"
+
     def test_txn_error_value(self):
         from pysui.sui.sui_common.executors.exec_types import GasStatus
         assert GasStatus.TXN_ERROR.value == "txn_error"
 
-    def test_enum_has_four_members(self):
+    def test_enum_has_five_members(self):
         from pysui.sui.sui_common.executors.exec_types import GasStatus
-        assert len(GasStatus) == 4
+        assert len(GasStatus) == 5
 
 
 class TestExecutorContext:

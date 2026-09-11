@@ -39,6 +39,7 @@ import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 import pysui.sui.sui_common.sui_commands as cmd
 from pysui.sui.sui_common.instrumentation import (
     active_collector,
+    count,
     get_collector,
     instrumented,
     measure,
@@ -46,6 +47,17 @@ from pysui.sui.sui_common.instrumentation import (
 )
 
 logger = logging.getLogger(__name__)
+
+_EQUIVOCATION_SUBSTRINGS = (
+    "unavailable for consumption",
+    "already locked by a different transaction",
+    "provided version doesn't match",
+)
+
+
+def _is_equivocation_error(error_text: str) -> bool:
+    """Return True if error_text matches a known equivocation-class Sui error."""
+    return any(s in error_text for s in _EQUIVOCATION_SUBSTRINGS)
 
 
 class SerialQueueProcessor:
@@ -189,11 +201,36 @@ class SerialQueueProcessor:
             ]
 
         try:
+            unresolved_inputs = txn.builder.get_unresolved_inputs()
+            conflict_ids: set[str] = {
+                u.ObjectStr for u in unresolved_inputs.values()
+                if hasattr(u, "ObjectStr")
+            }
+        except (AttributeError, TypeError) as exc:
+            logger.warning(
+                "SerialQueueProcessor: conflict-id extraction failed, "
+                "no equivocation retry for this transaction: %s",
+                exc,
+            )
+            count("executor.serial.conflict_extraction_failed")
+            unresolved_inputs = {}
+            conflict_ids = set()
+
+        try:
             async with measure("executor.serial.object_resolve"):
                 signed_tx = await self._cache.build_transaction(
                     txn, self._signing_block, gas_objects_override
                 )
         except Exception as exc:
+            error_str = str(exc).lower()
+            if _is_equivocation_error(error_str) and conflict_ids:
+                count("executor.serial.equivocation_retry_build")
+                logger.warning(
+                    "SerialQueueProcessor: build failed on equivocation, retrying: %s", exc
+                )
+                txn.builder.restore_unresolved_inputs(unresolved_inputs)
+                await self._cache.cache.delete_objects(list(conflict_ids))
+                return GasStatus.EQUIVOCATION_RETRY, (ExecutorError.BUILDING_ERROR, exc)
             logger.warning("SerialQueueProcessor: build_transaction failed: %s", exc)
             return GasStatus.TXN_ERROR, (ExecutorError.BUILDING_ERROR, exc)
 
@@ -212,7 +249,35 @@ class SerialQueueProcessor:
             error_str = str(exc).lower()
             if "insufficient gas" in error_str or "insufficient_gas" in error_str:
                 return GasStatus.NEED_FUNDS_AND_RETRY, (ExecutorError.EXECUTING_ERROR, exc)
+            if _is_equivocation_error(error_str) and conflict_ids:
+                count("executor.serial.equivocation_retry_transport")
+                logger.warning(
+                    "SerialQueueProcessor: transport failed on equivocation, retrying: %s", exc
+                )
+                txn.builder.restore_unresolved_inputs(unresolved_inputs)
+                await self._cache.cache.delete_objects(list(conflict_ids))
+                return GasStatus.EQUIVOCATION_RETRY, (ExecutorError.EXECUTING_ERROR, exc)
             return GasStatus.TXN_ERROR, (ExecutorError.EXECUTING_ERROR, exc)
+
+        status = getattr(executed_tx.effects, "status", None)
+        if status is not None and status.success is False:
+            error_desc = str(getattr(status.error, "description", "") or "").lower()
+            if _is_equivocation_error(error_desc) and conflict_ids:
+                count("executor.serial.equivocation_retry")
+                logger.warning(
+                    "SerialQueueProcessor: transaction %s hit equivocation on chain, retrying: %s",
+                    executed_tx.digest,
+                    status.error,
+                )
+                txn.builder.restore_unresolved_inputs(unresolved_inputs)
+                await self._cache.cache.delete_objects(list(conflict_ids))
+                return GasStatus.EQUIVOCATION_RETRY, (ExecutorError.EXECUTING_ERROR, status.error)
+            logger.warning(
+                "SerialQueueProcessor: transaction %s failed on chain: %s",
+                executed_tx.digest,
+                getattr(status, "error", None),
+            )
+            return GasStatus.TXN_ERROR, (ExecutorError.EXECUTING_ERROR, status.error)
 
         await self._cache.apply_effects(executed_tx.effects)
         self._update_gas_summary(executed_tx)
@@ -429,6 +494,18 @@ class SerialExecutor:
         async with active_collector(item.collector):
             status, result = await self._qp.process(item.txn)
 
+            while status in (GasStatus.NEED_FUNDS_AND_RETRY, GasStatus.EQUIVOCATION_RETRY):
+                if item.retry_count >= self._options.max_retries:
+                    item.future.set_result(result)
+                    await self._hard_stop("Max retries exhausted")
+                    return
+                if status == GasStatus.NEED_FUNDS_AND_RETRY and not await self._replenish():
+                    item.future.set_result(result)
+                    await self._hard_stop("on_balance_low declined on retry")
+                    return
+                item.retry_count += 1
+                status, result = await self._qp.process(item.txn)
+
             match status:
                 case GasStatus.OK:
                     item.future.set_result(result)
@@ -442,29 +519,6 @@ class SerialExecutor:
                     item.future.set_result(result)
                     if not await self._replenish():
                         await self._hard_stop("on_balance_low declined or failed")
-
-                case GasStatus.NEED_FUNDS_AND_RETRY:
-                    while True:
-                        if item.retry_count >= self._options.max_retries:
-                            item.future.set_result(result)
-                            await self._hard_stop("Max retries exhausted")
-                            return
-                        if not await self._replenish():
-                            item.future.set_result(result)
-                            await self._hard_stop("on_balance_low declined on retry")
-                            return
-                        item.retry_count += 1
-                        status, result = await self._qp.process(item.txn)
-                        if status != GasStatus.NEED_FUNDS_AND_RETRY:
-                            break
-
-                    # Dispatch on final retry outcome
-                    item.future.set_result(result)
-                    if status == GasStatus.NEED_FUNDS:
-                        if not await self._replenish():
-                            await self._hard_stop("on_balance_low declined after retry")
-                    elif status == GasStatus.TXN_ERROR and self._options.on_failure == "exit":
-                        await self._hard_stop("Transaction error after retry with on_failure=exit")
 
                 case _:
                     item.future.set_result(result)
