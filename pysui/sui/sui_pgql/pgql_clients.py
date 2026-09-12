@@ -272,8 +272,8 @@ class GqlProtocolClient(BaseSuiGQLClient, AsyncClientBase):
     async def serial_executor(
         self,
         *,
-        options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions",
-    ) -> "pysui.sui.sui_common.executors.serial_executor.SerialExecutor":
+        options: "ExecutorOptions",
+    ) -> "SerialExecutor":
         """Async factory: create and initialize a SerialExecutor.
 
         Performs coin selection, merging, and gas state seeding before returning
@@ -292,8 +292,8 @@ class GqlProtocolClient(BaseSuiGQLClient, AsyncClientBase):
     async def parallel_executor(
         self,
         *,
-        options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions",
-    ) -> "pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor":
+        options: "ExecutorOptions",
+    ) -> "ParallelExecutor":
         """Async factory: create and initialize a ParallelExecutor.
 
         Performs coin selection and gas state seeding before returning

@@ -12,7 +12,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 
 if TYPE_CHECKING:
+    from pysui import SuiRpcResult
     from pysui.sui.sui_common.config import PysuiConfiguration
+    from pysui.sui.sui_common.sui_command import SuiCommand
 
 
 class AsyncClientBase(ABC):

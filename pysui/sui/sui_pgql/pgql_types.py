@@ -121,11 +121,11 @@ class ProtocolConfigGQL:
         return None
 
     @sync_instrumented("pysui.sui.sui_pgql.pgql_types.ProtocolConfigGQL.__post_init__")
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """."""
         # Convert configs key/val to dict of key/int
         cfg_dict: dict = {}
-        cnst_dict: dict = self.transaction_constraints.to_dict()
+        cnst_dict: dict = self.transaction_constraints.to_dict()  # type: ignore[union-attr]
         # Turn to key addressable dict
         for ckv in self.configs:
             cfg_dict[ckv.key] = self._value_to_type(ckv.value)
@@ -140,11 +140,11 @@ class ProtocolConfigGQL:
         # Set appropriate features
         feat_dict: dict = {k.key: k.value for k in self.featureFlags}
         # Receive objects
-        self.transaction_constraints.receive_objects = feat_dict.get(
+        self.transaction_constraints.receive_objects = feat_dict.get(  # type: ignore[union-attr]
             "receive_objects", False
         )
         # Use account balance for gas payments
-        self.transaction_constraints.enable_address_balance_gas_payments = (
+        self.transaction_constraints.enable_address_balance_gas_payments = (  # type: ignore[union-attr]
             feat_dict.get("enable_address_balance_gas_payments", False)
         )
 

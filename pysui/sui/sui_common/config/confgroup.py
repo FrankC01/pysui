@@ -111,7 +111,7 @@ class ProfileGroup(dataclasses_json.DataClassJsonMixin):
     protocol: GroupProtocol = GroupProtocol.OTHER
 
     @sync_instrumented("pysui.sui.sui_common.config.confgroup.ProfileGroup.__post_init__")
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.protocol == GroupProtocol.OTHER:
             if self.group_name == SUI_GQL_RPC_GROUP:
                 self.protocol = GroupProtocol.GRAPHQL

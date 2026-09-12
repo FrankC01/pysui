@@ -93,7 +93,7 @@ class Visited:
     _VISITED: dict[str, dict] = {}
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_absreq.Visited.__init__")
-    def __init__(self):
+    def __init__(self) -> None:
         if hit := list(filter(lambda e: e[0] == "Value", PGRPC_Request._MODLIST)):
             vdict = hit[0][1].__dataclass_fields__
             vnames: list[str] = []
