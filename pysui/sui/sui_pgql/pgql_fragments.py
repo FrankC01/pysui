@@ -15,9 +15,10 @@ from pysui.sui.sui_common.instrumentation import sync_instrumented
 class GasCost(PGQL_Fragment):
     """GasCost reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.GasCost.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("GasSummary")
@@ -34,9 +35,10 @@ class GasCost(PGQL_Fragment):
 class PageCursor(PGQL_Fragment):
     """PageCursor reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.PageCursor.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("PageCursor")
@@ -51,9 +53,10 @@ class PageCursor(PGQL_Fragment):
 class BaseSuiObjectForCoin(PGQL_Fragment):
     """Base Sui Object Used since beta."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.BaseSuiObjectForCoin.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("BaseSuiObjectForCoin")
@@ -109,9 +112,10 @@ class BaseSuiObjectForCoin(PGQL_Fragment):
 class StandardCoin(PGQL_Fragment):
     """StandardCoin reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardCoin.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         pg_cursor = PageCursor()
         return (
@@ -170,9 +174,10 @@ class StandardCoin(PGQL_Fragment):
 class BaseObject(PGQL_Fragment):
     """BaseObject reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.BaseObject.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("BaseObject")
@@ -188,9 +193,10 @@ class BaseObject(PGQL_Fragment):
 class SummaryObject(PGQL_Fragment):
     """SummaryObject reusable fragment — id, version, digest, and owner only."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.SummaryObject.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("SummaryObject")
@@ -244,9 +250,10 @@ class SummaryObject(PGQL_Fragment):
 class StandardObject(PGQL_Fragment):
     """StandardObject reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardObject.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         base_object = BaseObject()
         return (
@@ -318,9 +325,10 @@ class StandardObject(PGQL_Fragment):
 class StandardEvent(PGQL_Fragment):
     """StandardEvent reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardEvent.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         return (
             DSLFragment("EventStandard")
@@ -343,13 +351,13 @@ class StandardEvent(PGQL_Fragment):
 class StandardTxEffects(PGQL_Fragment):
     """StandardTxEffects reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardTxEffects.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
-        # base_obj = BaseObject().fragment(schema)
-        base_obj = StandardObject().fragment(schema)
-        gas_cost = GasCost().fragment(schema)
+        base_obj = StandardObject.fragment(schema)
+        gas_cost = GasCost.fragment(schema)
 
         return (
             DSLFragment("TxEffects")
@@ -430,9 +438,10 @@ class ExecutedObject(PGQL_Fragment):
     in StandardObject because most query contexts do not require it.
     """
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.ExecutedObject.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         base_object = BaseObject()
         return (
@@ -509,12 +518,13 @@ class ExecutedTxEffects(PGQL_Fragment):
     breaking existing callers of StandardTxEffects.
     """
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.ExecutedTxEffects.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
-        exec_obj = ExecutedObject().fragment(schema)
-        gas_cost = GasCost().fragment(schema)
+        exec_obj = ExecutedObject.fragment(schema)
+        gas_cost = GasCost.fragment(schema)
 
         return (
             DSLFragment("ExecutedTxEffects")
@@ -588,12 +598,13 @@ class ExecutedTxEffects(PGQL_Fragment):
 class StandardTransaction(PGQL_Fragment):
     """StandardTransaction reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardTransaction.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
-        base_obj = BaseObject().fragment(schema)
-        tx_effects = StandardTxEffects().fragment(schema)
+        base_obj = BaseObject.fragment(schema)
+        tx_effects = StandardTxEffects.fragment(schema)
         return (
             DSLFragment("TxStandard")
             .on(schema.Transaction)
@@ -629,9 +640,10 @@ class StandardTransaction(PGQL_Fragment):
 class ProgrammableTxKind(PGQL_Fragment):
     """Details of the ProgrammableTransaction type commands."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.ProgrammableTxKind.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         return (
             DSLFragment("PrgTxKind")
@@ -886,9 +898,10 @@ class ProgrammableTxKind(PGQL_Fragment):
 class ConsensusCommitPrologueKind(PGQL_Fragment):
     """Details of consensus commit transaction."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.ConsensusCommitPrologueKind.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
 
         return (
@@ -910,9 +923,10 @@ class ConsensusCommitPrologueKind(PGQL_Fragment):
 class AuthenticatorStateUpdateTransactionKind(PGQL_Fragment):
     """Details of AuthenticatorStateUpdateTransaction."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.AuthenticatorStateUpdateTransactionKind.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
 
         return (
@@ -944,9 +958,10 @@ class AuthenticatorStateUpdateTransactionKind(PGQL_Fragment):
 class RandomnessStateUpdateTransactionKind(PGQL_Fragment):
     """Details of RandomnessStateUpdateTransaction."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.RandomnessStateUpdateTransactionKind.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
 
         return (
@@ -964,9 +979,10 @@ class RandomnessStateUpdateTransactionKind(PGQL_Fragment):
 class ChangeEpochTransactionKind(PGQL_Fragment):
     """Details of ChangeEpochTransaction. systemPackages omitted — GQL cannot provide raw module bytes or direct dependencies."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.ChangeEpochTransactionKind.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         return (
             DSLFragment("ChangeEpochTxKind")
@@ -990,11 +1006,12 @@ class EndOfEpochTransactionKind(PGQL_Fragment):
     StoreExecutionTimeObservationsTransaction is an empty GQL placeholder — no fields to map.
     """
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.EndOfEpochTransactionKind.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
-        chg_epoch = ChangeEpochTransactionKind().fragment(schema)
+        chg_epoch = ChangeEpochTransactionKind.fragment(schema)
         return (
             DSLFragment("EndOfEpochTxKind")
             .on(schema.EndOfEpochTransaction)
@@ -1022,16 +1039,17 @@ class EndOfEpochTransactionKind(PGQL_Fragment):
 class StandardTransactionKind(PGQL_Fragment):
     """Details a transaction's kind. Covers all 7 gRPC-mapped TransactionKind variants."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardTransactionKind.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
-        prg_kind = ProgrammableTxKind().fragment(schema)
-        ccp_kind = ConsensusCommitPrologueKind().fragment(schema)
-        auth_kind = AuthenticatorStateUpdateTransactionKind().fragment(schema)
-        rnd_kind = RandomnessStateUpdateTransactionKind().fragment(schema)
-        chg_epoch_kind = ChangeEpochTransactionKind().fragment(schema)
-        eoe_kind = EndOfEpochTransactionKind().fragment(schema)
+        prg_kind = ProgrammableTxKind.fragment(schema)
+        ccp_kind = ConsensusCommitPrologueKind.fragment(schema)
+        auth_kind = AuthenticatorStateUpdateTransactionKind.fragment(schema)
+        rnd_kind = RandomnessStateUpdateTransactionKind.fragment(schema)
+        chg_epoch_kind = ChangeEpochTransactionKind.fragment(schema)
+        eoe_kind = EndOfEpochTransactionKind.fragment(schema)
         return (
             DSLFragment("TxKind")
             .on(schema.Transaction)
@@ -1075,9 +1093,10 @@ class StandardTransactionKind(PGQL_Fragment):
 class StandardCheckpoint(PGQL_Fragment):
     """StandardChecpoint reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardCheckpoint.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         pg_cursor = PageCursor()
         return (
@@ -1123,9 +1142,10 @@ class StandardCheckpoint(PGQL_Fragment):
 class StandardProtocolConfig(PGQL_Fragment):
     """StandardChecpoint reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardProtocolConfig.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         return (
             DSLFragment("ProtcolConfig")
@@ -1147,9 +1167,10 @@ class StandardProtocolConfig(PGQL_Fragment):
 class MoveStructure(PGQL_Fragment):
     """MoveStructure reusable fragment"""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.MoveStructure.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
 
         return (
@@ -1171,9 +1192,10 @@ class MoveStructure(PGQL_Fragment):
 class MoveEnum(PGQL_Fragment):
     """MoveEnum reusable fragment"""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.MoveEnum.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
 
         return (
@@ -1198,9 +1220,10 @@ class MoveEnum(PGQL_Fragment):
 class MoveStructureSC(PGQL_Fragment):
     """MoveStructureSC — superset of MoveStructure that also fetches typeParameters with constraints and isPhantom."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.MoveStructureSC.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         return (
             DSLFragment("MoveStructSC")
@@ -1225,9 +1248,10 @@ class MoveStructureSC(PGQL_Fragment):
 class MoveEnumSC(PGQL_Fragment):
     """MoveEnumSC — superset of MoveEnum that also fetches typeParameters with constraints and isPhantom."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.MoveEnumSC.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         return (
             DSLFragment("MoveEnumSC")
@@ -1255,9 +1279,10 @@ class MoveEnumSC(PGQL_Fragment):
 class MoveFunction(PGQL_Fragment):
     """MoveFunction reusable fragment"""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.MoveFunction.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
 
         return (
@@ -1284,14 +1309,15 @@ class MoveModule(PGQL_Fragment):
     Contains structs and functions
     """
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.MoveModule.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
-        pg_cursor = PageCursor().fragment(schema)
-        struc = MoveStructureSC().fragment(schema)
-        enum_frag = MoveEnumSC().fragment(schema)
-        func = MoveFunction().fragment(schema)
+        pg_cursor = PageCursor.fragment(schema)
+        struc = MoveStructureSC.fragment(schema)
+        enum_frag = MoveEnumSC.fragment(schema)
+        func = MoveFunction.fragment(schema)
         return (
             DSLFragment("MoveModule")
             .on(schema.MoveModule)
@@ -1319,9 +1345,10 @@ class MoveModule(PGQL_Fragment):
 class Validator(PGQL_Fragment):
     """Validator reusable fragment."""
 
+    @staticmethod
     @cache
     @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.Validator.fragment")
-    def fragment(self, schema: DSLSchema) -> DSLFragment:
+    def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         return (
             DSLFragment("Validator")
@@ -1367,8 +1394,8 @@ class ValidatorSet(PGQL_Fragment):
         after: str | None = None,
     ) -> DSLFragment:
         """."""
-        pg_cursor = PageCursor().fragment(schema)
-        vals = Validator().fragment(schema)
+        pg_cursor = PageCursor.fragment(schema)
+        vals = Validator.fragment(schema)
         if after:
             active_vals = schema.ValidatorSet.activeValidators(after=after)
         else:

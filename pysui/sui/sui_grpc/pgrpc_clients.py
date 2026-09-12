@@ -103,37 +103,42 @@ class GrpcProtocolClient(PysuiClient, AsyncClientBase):
             )
         self._channels: list[Channel] = []
         self._protocol_config: ProtocolConfig = None
+        self._gas_price: int = None
 
     @property
-    @instrumented(
+    @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_clients.GrpcProtocolClient.current_gas_price"
     )
-    async def current_gas_price(self) -> int:
+    def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
-        result = await self.execute_grpc_request(request=GetEpoch())
-        if result.is_ok():
-            return result.result_data.epoch.reference_gas_price
-        raise ValueError(f"Error accessing gRPC {result.result_string}")
+        return self._gas_price
 
     @instrumented("grpc._init_protocol")
     async def _init_protocol(self, epoch_number: Optional[int] = None) -> None:
-        """Fetch and cache protocol constraints at init time."""
+        """Fetch and cache protocol constraints and gas price at init time."""
         result = await self.execute_grpc_request(
             request=GetEpoch(
                 epoch_number=epoch_number,
-                field_mask=["protocol_config"],
+                field_mask=["protocol_config", "reference_gas_price"],
             )
         )
         if result.is_ok() and hasattr(result.result_data.epoch, "protocol_config"):
             self._protocol_config = _map_pconstraints(
                 result.result_data.epoch.protocol_config
             )
+            self._gas_price = result.result_data.epoch.reference_gas_price
             return
         raise ValueError(f"protocol fetch returned {result.result_string}")
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_clients.GrpcProtocolClient.protocol")
-    def protocol(self, epoch_number: Optional[int] = None) -> ProtocolConfig:
-        """Return cached protocol constraints."""
+    def protocol(  # pylint: disable=arguments-renamed
+        self, epoch_number: Optional[int] = None
+    ) -> ProtocolConfig:
+        """Return cached protocol constraints.
+
+        Accepts ``epoch_number`` (int) rather than the ABC's ``for_version``
+        (str): Sui epochs are identified by number, not a version string.
+        """
         return self._protocol_config
 
     @instrumented("grpc.close")

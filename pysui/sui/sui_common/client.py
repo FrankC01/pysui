@@ -45,7 +45,7 @@ class PysuiClient(ABC):
         """Fetch the protocol constraint block."""
 
     @abstractmethod
-    def transaction(self, **kwargs) -> Any:
+    async def transaction(self, **kwargs) -> Any:
         """Return a transaction builder for this client's protocol."""
 
     @abstractmethod
@@ -58,5 +58,5 @@ class PysuiClient(ABC):
     ) -> "SuiRpcResult":
         """Execute a SuiCommand against this client's protocol."""
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Release resources held by this client. Override if cleanup is needed."""

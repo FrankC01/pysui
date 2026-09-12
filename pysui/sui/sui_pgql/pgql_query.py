@@ -116,9 +116,9 @@ class GetObjectsForTypeSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetObjectsForTypeSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest with owner and type filters."""
-        std_object = frag.StandardObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
 
         if self.next_page_token:
             obj_connection = schema.Query.objects(
@@ -319,7 +319,7 @@ class GetMultipleObjectsSummarySC(PGQL_QueryNode):
         """Build GraphQLRequest using the leaner SummaryObject fragment."""
         obj_ids = [{"address": cid} for cid in self.object_ids]
         qres = schema.Query.multiGetObjects(keys=obj_ids)
-        summary_frag = frag.SummaryObject().fragment(schema)
+        summary_frag = frag.SummaryObject.fragment(schema)
         qres.select(summary_frag)
         return dsl_gql(summary_frag, DSLQuery(qres))
 
@@ -377,7 +377,7 @@ class GetObjectSummarySC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetObjectSummarySC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest using the SummaryObject fragment."""
-        summary_frag = frag.SummaryObject().fragment(schema)
+        summary_frag = frag.SummaryObject.fragment(schema)
         return dsl_gql(
             summary_frag,
             DSLQuery(
@@ -433,10 +433,10 @@ class GetTransactionSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetTransactionSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build transaction query with metadata + BCS fields. Kind decoded from BCS."""
-        tx_effects = frag.ExecutedTxEffects().fragment(schema)
-        exec_object = frag.ExecutedObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
+        tx_effects = frag.ExecutedTxEffects.fragment(schema)
+        exec_object = frag.ExecutedObject.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
+        gas_cost = frag.GasCost.fragment(schema)
         qres = schema.Query.transaction(digest=self.digest)
         qres.select(
             schema.Transaction.digest,
@@ -514,10 +514,10 @@ class GetTransactionsSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetTransactionsSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build multi-transaction query with metadata + BCS fields. Kind decoded from BCS."""
-        tx_effects = frag.ExecutedTxEffects().fragment(schema)
-        exec_object = frag.ExecutedObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
+        tx_effects = frag.ExecutedTxEffects.fragment(schema)
+        exec_object = frag.ExecutedObject.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
+        gas_cost = frag.GasCost.fragment(schema)
         qres = schema.Query.multiGetTransactions(keys=self.digests)
         qres.select(
             schema.Transaction.digest,
@@ -717,7 +717,7 @@ class GetProtocolConfigSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetProtocolConfigSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQL DSL request."""
-        std_prot_cfg = frag.StandardProtocolConfig().fragment(schema)
+        std_prot_cfg = frag.StandardProtocolConfig.fragment(schema)
         if self.version is not None:
             qres = schema.Query.protocolConfigs(version=self.version).select(
                 std_prot_cfg
@@ -847,8 +847,8 @@ class SimulateTransactionKindSC(PGQL_QueryNode):
         else:
             raise ValueError("Requires 'sender' set in tx_meta dict")
 
-        base_object = frag.BaseObject().fragment(schema)
-        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
         qres = (
             schema.Query.simulateTransaction(
                 transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
@@ -1088,8 +1088,8 @@ class SimulateTransactionSC(SimulateTransactionKindSC):
         """Build rich simulate query; self.transaction is pre-set from BCS bytes."""
         # __init__ always sets self.transaction to a real Transaction (never None).
         assert self.transaction is not None
-        base_object = frag.BaseObject().fragment(schema)
-        std_object = frag.StandardObject().fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
         qres = (
             schema.Query.simulateTransaction(
                 transaction=self.transaction.to_dict(casing=betterproto2.Casing.SNAKE),
@@ -1210,10 +1210,10 @@ class ExecuteTransactionSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.ExecuteTransactionSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Execute transaction; fetch fields that mirror GetTransactionSC via effects.transaction."""
-        tx_effects = frag.ExecutedTxEffects().fragment(schema)
-        exec_object = frag.ExecutedObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        gas_cost = frag.GasCost().fragment(schema)
+        tx_effects = frag.ExecutedTxEffects.fragment(schema)
+        exec_object = frag.ExecutedObject.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
+        gas_cost = frag.GasCost.fragment(schema)
         qres = schema.Mutation.executeTransaction(
             transactionDataBcs=self.tx_data, signatures=self.sigs
         ).select(
@@ -1479,7 +1479,7 @@ class GetEpochSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetEpochSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
-        std_prot_cfg = frag.StandardProtocolConfig().fragment(schema)
+        std_prot_cfg = frag.StandardProtocolConfig.fragment(schema)
         qres = schema.Query.epoch
         if self.epoch_id is not None:
             qres(epochId=self.epoch_id)
@@ -2463,8 +2463,8 @@ class GetPastObjectSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPastObjectSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest."""
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
 
         return dsl_gql(
             std_object,
@@ -2510,8 +2510,8 @@ class GetMoveDataTypeSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetMoveDataTypeSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Use MoveStructureSC/MoveEnumSC fragments to include typeParameters and isPhantom."""
-        struc = frag.MoveStructureSC().fragment(schema)
-        enum = frag.MoveEnumSC().fragment(schema)
+        struc = frag.MoveStructureSC.fragment(schema)
+        enum = frag.MoveEnumSC.fragment(schema)
 
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
@@ -2617,7 +2617,7 @@ class GetFunctionSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetFunctionSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
-        func = frag.MoveFunction().fragment(schema)
+        func = frag.MoveFunction.fragment(schema)
 
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
@@ -2676,9 +2676,9 @@ class GetCoinsSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetCoinsSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest with owner and type filters."""
-        std_object = frag.StandardObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
 
         if self.next_page_token:
             obj_connection = schema.Query.objects(
@@ -2733,9 +2733,9 @@ class GetGasSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetGasSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build GraphQLRequest with owner and SUI coin type filter."""
-        std_object = frag.StandardObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
 
         if self.next_page_token:
             obj_connection = schema.Query.objects(
@@ -2806,8 +2806,8 @@ class GetDelegatedStakesSC(PGQL_QueryNode):
                 filter={"owner": self.owner, "type": "0x3::staking_pool::StakedSui"}
             )
         # Build fragment
-        pg_cursor = frag.PageCursor().fragment(schema)
-        bs_coin = frag.BaseSuiObjectForCoin().fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
+        bs_coin = frag.BaseSuiObjectForCoin.fragment(schema)
         qres.select(
             cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
             staked_coin=schema.ObjectConnection.nodes.select(bs_coin),
@@ -2867,9 +2867,9 @@ class GetObjectsOwnedByAddressSC(PGQL_QueryNode):
         if self.next_page_token:
             qres(after=self.next_page_token.decode())
 
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
         qres.select(
             cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
             objects_data=schema.ObjectConnection.nodes.select(std_object),
@@ -2925,9 +2925,9 @@ class GetPartyObjectsSC(PGQL_QueryNode):
         qres = schema.Query.objects(filter={"owner": self.owner})
         if self.next_page_token:
             qres(after=self.next_page_token.decode())
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
         qres.select(
             cursor=schema.ObjectConnection.pageInfo.select(pg_cursor),
             objects_data=schema.ObjectConnection.nodes.select(std_object),
@@ -2998,8 +2998,8 @@ class GetMultipleObjectsSC(PGQL_QueryNode):
         obj_ids = [{"address": cid} for cid in self.object_ids]
         qres = schema.Query.multiGetObjects(keys=obj_ids)
 
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
         qres.select(std_object)
 
         return dsl_gql(
@@ -3055,8 +3055,8 @@ class GetMultipleVersionedObjectsSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetMultipleVersionedObjectsSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
-        std_object = frag.StandardObject().fragment(schema)
-        base_object = frag.BaseObject().fragment(schema)
+        std_object = frag.StandardObject.fragment(schema)
+        base_object = frag.BaseObject.fragment(schema)
 
         return dsl_gql(
             std_object,
@@ -3185,11 +3185,11 @@ class GetModuleSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetModuleSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """."""
-        func = frag.MoveFunction().fragment(schema)
-        struc = frag.MoveStructureSC().fragment(schema)
-        enum_frag = frag.MoveEnumSC().fragment(schema)
-        mod = frag.MoveModule().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
+        func = frag.MoveFunction.fragment(schema)
+        struc = frag.MoveStructureSC.fragment(schema)
+        enum_frag = frag.MoveEnumSC.fragment(schema)
+        mod = frag.MoveModule.fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
 
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
@@ -3237,11 +3237,11 @@ class GetPackageSC(PGQL_QueryNode):
             mod_q = schema.MovePackage.modules(after=self.next_page_token.decode())
         else:
             mod_q = schema.MovePackage.modules
-        pg_cursor = frag.PageCursor().fragment(schema)
-        func = frag.MoveFunction().fragment(schema)
-        struc = frag.MoveStructureSC().fragment(schema)
-        enum_frag = frag.MoveEnumSC().fragment(schema)
-        mod = frag.MoveModule().fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
+        func = frag.MoveFunction.fragment(schema)
+        struc = frag.MoveStructureSC.fragment(schema)
+        enum_frag = frag.MoveEnumSC.fragment(schema)
+        mod = frag.MoveModule.fragment(schema)
 
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
@@ -3315,9 +3315,9 @@ class GetStructuresSC(PGQL_QueryNode):
             dt_q = schema.MoveModule.datatypes(after=self.next_page_token.decode())
         else:
             dt_q = schema.MoveModule.datatypes
-        struc = frag.MoveStructureSC().fragment(schema)
-        enum_frag = frag.MoveEnumSC().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
+        struc = frag.MoveStructureSC.fragment(schema)
+        enum_frag = frag.MoveEnumSC.fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
                 schema.MovePackage.module(name=self.module).select(
@@ -3389,8 +3389,8 @@ class GetFunctionsSC(PGQL_QueryNode):
             func_q = schema.MoveModule.functions(after=self.next_page_token.decode())
         else:
             func_q = schema.MoveModule.functions
-        func = frag.MoveFunction().fragment(schema)
-        pg_cursor = frag.PageCursor().fragment(schema)
+        func = frag.MoveFunction.fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
         qres = schema.Query.object(address=self.package).select(
             schema.Object.asMovePackage.select(
                 schema.MovePackage.module(name=self.module).select(
@@ -3506,7 +3506,7 @@ class GetDynamicFieldsSC(PGQL_QueryNode):
         if self.next_page_token:
             dfield_connection(after=self.next_page_token.decode())
 
-        pg_cursor = frag.PageCursor().fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
 
         def _owner_inline(owner_field):
             return owner_field.select(
@@ -3960,7 +3960,7 @@ class GetCurrentValidatorsSC(PGQL_QueryNode):
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetCurrentValidatorsSC.as_document_node")
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Build request using bytes cursor for validators paging."""
-        pg_cursor = frag.PageCursor().fragment(schema)
+        pg_cursor = frag.PageCursor.fragment(schema)
         if self.next_page_token:
             active_vals = schema.ValidatorSet.activeValidators(
                 after=self.next_page_token.decode()

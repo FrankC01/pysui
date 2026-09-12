@@ -114,6 +114,13 @@ disable = [
     "too-many-public-methods",
     "too-many-lines",
     "fixme",
+    "wrong-import-position",
+    "import-outside-toplevel",
+    "duplicate-code",
+    "protected-access",
+    "unused-argument",
+    "broad-exception-caught",
+    "redefined-builtin",
 ]
 
 [tool.pylint.basic]

@@ -537,7 +537,7 @@ class MoveDataType:
             comped_module = compile(
                 ast.unparse(self._generated.ast_module), filename="blah", mode="exec"
             )
-            exec(comped_module, self._compiled)
+            exec(comped_module, self._compiled)  # pylint: disable=exec-used
         return self._compiled
 
     @instrumented("pysui.sui.sui_common.move_to_bcs.MoveDataType.emit_bcs_source")
