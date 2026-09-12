@@ -20,7 +20,11 @@ from pysui.sui.sui_bcs.bcs import TransactionKind
 from pysui.sui.sui_bcs import bcs
 
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-from pysui.sui.sui_common.shared_types import ObjectSummary, ObjectSummaryList
+from pysui.sui.sui_common.shared_types import (
+    MAX_MULTI_OBJECT_FETCH,
+    ObjectSummary,
+    ObjectSummaryList,
+)
 from pysui.sui.sui_common.instrumentation import (
     sync_instrumented,
     sync_measure,
@@ -362,8 +366,10 @@ class GetMultipleObjects(absreq.PGRPC_Request):
         field_mask: Optional[list[str]] = None,
     ) -> None:
         """Initializer."""
-        if len(object_ids) > 50:
-            raise ValueError(f"Max object ids 50, {len(object_ids)} submitted.")
+        if len(object_ids) > MAX_MULTI_OBJECT_FETCH:
+            raise ValueError(
+                f"Max object ids {MAX_MULTI_OBJECT_FETCH}, {len(object_ids)} submitted."
+            )
         super().__init__(absreq.Service.LEDGER)
         self.objects = [sui_prot.GetObjectRequest(obj, None) for obj in object_ids]
         self.field_mask = self._field_mask(
@@ -590,8 +596,10 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
         :type for_versions: list[dict]
 
         """
-        if len(for_versions) > 50:
-            raise ValueError(f"Max object ids 50, {len(for_versions)} submitted.")
+        if len(for_versions) > MAX_MULTI_OBJECT_FETCH:
+            raise ValueError(
+                f"Max object ids {MAX_MULTI_OBJECT_FETCH}, {len(for_versions)} submitted."
+            )
         super().__init__(absreq.Service.LEDGER)
         self.objects = []
         for entry in for_versions:

@@ -31,6 +31,7 @@ import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_common.txn_tx_argparse import TxnArgParse, TxnArgMode
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectSummary
+from pysui.sui.sui_common.shared_types import MAX_MULTI_OBJECT_FETCH
 from pysui.sui.sui_common.async_funcs import AsyncLRU
 from pysui.sui.sui_common.instrumentation import (
     instrumented,
@@ -270,23 +271,26 @@ class AsyncSuiTransaction(txbase):
             fetch_ids[idx] = unobj.ObjectStr
 
         if fetch_ids:
-            result = await self.client.execute(
-                command=GetMultipleObjectSummary(object_ids=list(fetch_ids.values()))
-            )
-            if not result.is_ok():
-                raise ValueError(f"Object resolution failed: {result.result_string}")
+            fetch_items = list(fetch_ids.items())
+            for page_start in range(0, len(fetch_items), MAX_MULTI_OBJECT_FETCH):
+                page = dict(fetch_items[page_start : page_start + MAX_MULTI_OBJECT_FETCH])
+                result = await self.client.execute(
+                    command=GetMultipleObjectSummary(object_ids=list(page.values()))
+                )
+                if not result.is_ok():
+                    raise ValueError(f"Object resolution failed: {result.result_string}")
 
-            id_to_indices: dict[str, list[int]] = {}
-            for k, v in fetch_ids.items():
-                id_to_indices.setdefault(v.lower(), []).append(k)
-            for entry in result.result_data.objects:
-                indices = id_to_indices.get(entry.objectId.lower())
-                if not indices:
-                    continue
-                if cache:
-                    await cache.add_object(entry)
-                for idx in indices:
-                    resolved[idx] = _unresolved_to_builder_arg(unresolved[idx], entry)
+                id_to_indices: dict[str, list[int]] = {}
+                for k, v in page.items():
+                    id_to_indices.setdefault(v.lower(), []).append(k)
+                for entry in result.result_data.objects:
+                    indices = id_to_indices.get(entry.objectId.lower())
+                    if not indices:
+                        continue
+                    if cache:
+                        await cache.add_object(entry)
+                    for idx in indices:
+                        resolved[idx] = _unresolved_to_builder_arg(unresolved[idx], entry)
 
             missing = [fetch_ids[idx] for idx in fetch_ids if idx not in resolved]
             if missing:
