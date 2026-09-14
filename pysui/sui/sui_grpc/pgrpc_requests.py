@@ -10,7 +10,8 @@
 
 import base64
 import dataclasses
-from typing import Callable, Optional
+from collections.abc import AsyncIterator
+from typing import Any, Callable, Coroutine, Optional
 import base58
 from deprecated.sphinx import versionadded
 import dataclasses_json
@@ -47,7 +48,7 @@ class GetServiceInfo(absreq.PGRPC_Request):
         *,
         stub: sui_prot.LedgerServiceStub,
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """Prepare the request for submission."""
         return stub.get_service_info, sui_prot.GetServiceInfoRequest()
@@ -85,7 +86,7 @@ class GetCheckpoint(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.get_checkpoint, sui_prot.GetCheckpointRequest(
@@ -145,7 +146,7 @@ class GetEpoch(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.get_epoch, sui_prot.GetEpochRequest(
@@ -166,8 +167,12 @@ class GetLatestSuiSystemState(GetEpoch):
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetLatestSuiSystemState.render"
     )
-    def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.SystemState:
+    def render(
+        self, gepoch: sui_prot.GetEpochResponse
+    ) -> Optional[sui_prot.SystemState]:
         """Render the response payload into a SystemState message."""
+        if gepoch.epoch is None:
+            return None
         return gepoch.epoch.system_state
 
 
@@ -192,8 +197,16 @@ class GetCurrentValidatorsSC(GetCurrentValidators):
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetCurrentValidatorsSC.render"
     )
-    def render(self, gepoch: sui_prot.GetEpochResponse) -> "ValidatorsResult":
+    def render(
+        self, gepoch: sui_prot.GetEpochResponse
+    ) -> Optional["ValidatorsResult"]:
         """Extract active validators from epoch system state."""
+        if (
+            gepoch.epoch is None
+            or gepoch.epoch.system_state is None
+            or gepoch.epoch.system_state.validators is None
+        ):
+            return None
         return ValidatorsResult(
             validators=gepoch.epoch.system_state.validators.active_validators,
             next_page_token=None,
@@ -213,7 +226,7 @@ class GetBasicCurrentEpochInfo(GetEpoch):
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetBasicCurrentEpochInfo.render"
     )
-    def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.Epoch:
+    def render(self, gepoch: sui_prot.GetEpochResponse) -> Optional[sui_prot.Epoch]:
         """Return the Epoch message directly."""
         return gepoch.epoch
 
@@ -233,8 +246,12 @@ class GetProtocolConfig(GetEpoch):
         super().__init__(epoch_number=version, field_mask=["protocol_config"])
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetProtocolConfig.render")
-    def render(self, gepoch: sui_prot.GetEpochResponse) -> sui_prot.ProtocolConfig:
+    def render(
+        self, gepoch: sui_prot.GetEpochResponse
+    ) -> Optional[sui_prot.ProtocolConfig]:
         """Return the ProtocolConfig message from the response."""
+        if gepoch.epoch is None:
+            return None
         return gepoch.epoch.protocol_config
 
 
@@ -274,7 +291,7 @@ class GetObject(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """Prepare the request for submission."""
         return stub.get_object, sui_prot.GetObjectRequest(
@@ -307,7 +324,7 @@ class GetPastObject(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """Prepare the request for submission."""
         return stub.get_object, sui_prot.GetObjectRequest(
@@ -328,7 +345,7 @@ class GetObjectSC(GetObject):
         )
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectSC.render")
-    def render(self, obj: sui_prot.GetObjectResponse) -> sui_prot.Object:
+    def render(self, obj: sui_prot.GetObjectResponse) -> Optional[sui_prot.Object]:
         """Extract the inner Object from the gRPC wrapper."""
         return obj.object
 
@@ -348,7 +365,7 @@ class GetPastObjectSC(GetPastObject):
         )
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPastObjectSC.render")
-    def render(self, obj: sui_prot.GetObjectResponse) -> sui_prot.Object:
+    def render(self, obj: sui_prot.GetObjectResponse) -> Optional[sui_prot.Object]:
         """Extract the inner Object from the gRPC wrapper."""
         return obj.object
 
@@ -382,7 +399,7 @@ class GetMultipleObjects(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.batch_get_objects, sui_prot.BatchGetObjectsRequest(
@@ -435,38 +452,42 @@ class GetMultipleObjectsSummarySC(GetMultipleObjects):
             oid_str: str = obj.object_id or ""
             version: int = obj.version or 0
             digest_str: str = obj.digest or ""
+            owner = obj.owner  # field_mask includes "owner"
             owner_kind: str = (
-                obj.owner.kind.name
-                if obj.owner and obj.owner.kind is not None
+                owner.kind.name
+                if owner and owner.kind is not None
                 else "OWNER_KIND_UNKNOWN"
             )
             if owner_kind == "SHARED":
+                assert owner is not None
                 entries.append(
                     ObjectSummary(
                         objectId=oid_str,
                         version=str(version),
                         digest=digest_str,
                         owner=None,
-                        initialSharedVersion=str(obj.owner.version or 0),
+                        initialSharedVersion=str(owner.version or 0),
                     )
                 )
             elif owner_kind == "CONSENSUS_ADDRESS":
+                assert owner is not None
                 entries.append(
                     ObjectSummary(
                         objectId=oid_str,
                         version=str(version),
                         digest=digest_str,
                         owner=None,
-                        initialSharedVersion=str(obj.owner.version or 0),
+                        initialSharedVersion=str(owner.version or 0),
                     )
                 )
             elif owner_kind in ("ADDRESS", "OBJECT"):
+                assert owner is not None
                 entries.append(
                     ObjectSummary(
                         objectId=oid_str,
                         version=str(version),
                         digest=digest_str,
-                        owner=obj.owner.address if owner_kind == "ADDRESS" else None,
+                        owner=owner.address if owner_kind == "ADDRESS" else None,
                     )
                 )
             else:
@@ -490,39 +511,45 @@ class GetObjectSummarySC(GetObject):
         super().__init__(object_id=object_id, field_mask=_SUMMARY_FIELD_MASK)
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetObjectSummarySC.render")
-    def render(self, resp: sui_prot.GetObjectResponse) -> ObjectSummary:
+    def render(self, resp: sui_prot.GetObjectResponse) -> Optional[ObjectSummary]:
         """Convert gRPC GetObjectResponse to ObjectSummary."""
         obj = resp.object
+        if obj is None:
+            return None
         oid_str: str = obj.object_id or ""
         version: int = obj.version or 0
         digest_str: str = obj.digest or ""
+        owner = obj.owner  # field_mask includes "owner"
         owner_kind: str = (
-            obj.owner.kind.name
-            if obj.owner and obj.owner.kind is not None
+            owner.kind.name
+            if owner and owner.kind is not None
             else "OWNER_KIND_UNKNOWN"
         )
         if owner_kind == "SHARED":
+            assert owner is not None
             return ObjectSummary(
                 objectId=oid_str,
                 version=str(version),
                 digest=digest_str,
                 owner=None,
-                initialSharedVersion=str(obj.owner.version or 0),
+                initialSharedVersion=str(owner.version or 0),
             )
         if owner_kind == "CONSENSUS_ADDRESS":
+            assert owner is not None
             return ObjectSummary(
                 objectId=oid_str,
                 version=str(version),
                 digest=digest_str,
                 owner=None,
-                initialSharedVersion=str(obj.owner.version or 0),
+                initialSharedVersion=str(owner.version or 0),
             )
         if owner_kind in ("ADDRESS", "OBJECT"):
+            assert owner is not None
             return ObjectSummary(
                 objectId=oid_str,
                 version=str(version),
                 digest=digest_str,
-                owner=obj.owner.address if owner_kind == "ADDRESS" else None,
+                owner=owner.address if owner_kind == "ADDRESS" else None,
             )
         return ObjectSummary(
             objectId=oid_str,
@@ -558,7 +585,7 @@ class GetDynamicFields(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.list_dynamic_fields, sui_prot.ListDynamicFieldsRequest(
@@ -604,7 +631,9 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
         self.objects = []
         for entry in for_versions:
             self.objects.append(
-                sui_prot.GetObjectRequest(entry["objectId"], entry["version"])
+                sui_prot.GetObjectRequest(
+                    str(entry["objectId"]), int(entry["version"])
+                )
             )
         self.field_mask = self._field_mask(
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
@@ -616,7 +645,7 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.batch_get_objects, sui_prot.BatchGetObjectsRequest(
@@ -691,7 +720,7 @@ class GetObjectsOwnedByAddress(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.list_owned_objects, sui_prot.ListOwnedObjectsRequest(
@@ -740,17 +769,17 @@ class GetObjectsOwnedByAddressSC(GetObjectsOwnedByAddress):
 class GetPartyObjectsSC(GetObjectsOwnedByAddressSC):
     """SC variant: render filters response to ConsensusAddressOwner (party) objects only."""
 
-    @sync_instrumented(
-        "pysui.sui.sui_grpc.pgrpc_requests.GetPartyObjectsSC.render"
-    )
+    @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPartyObjectsSC.render")
     def render(
         self, resp: sui_prot.ListOwnedObjectsResponse
     ) -> sui_prot.ListOwnedObjectsResponse:
         """Strip coin reservations then keep only party (ConsensusAddressOwner) objects."""
         resp = super().render(resp)
         resp.objects = [
-            o for o in resp.objects
-            if o.owner and o.owner.kind.name == "CONSENSUS_ADDRESS"
+            o
+            for o in resp.objects
+            if o.owner and o.owner.kind is not None
+            and o.owner.kind.name == "CONSENSUS_ADDRESS"
         ]
         return resp
 
@@ -926,7 +955,7 @@ class GetCoinMetaData(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.get_coin_info, sui_prot.GetCoinInfoRequest(
@@ -960,7 +989,7 @@ class GetAddressCoinBalance(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.get_balance, sui_prot.GetBalanceRequest(
@@ -996,7 +1025,7 @@ class GetAddressCoinBalances(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.StateServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.list_balances, sui_prot.ListBalancesRequest(
@@ -1031,7 +1060,7 @@ class GetTransaction(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.get_transaction, sui_prot.GetTransactionRequest(
@@ -1060,7 +1089,7 @@ class GetTransactions(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.batch_get_transactions, sui_prot.BatchGetTransactionsRequest(
@@ -1154,7 +1183,7 @@ class GetTransactionKindSC(GetTransaction):
         self, obj: sui_prot.GetTransactionResponse
     ) -> sui_prot.TransactionKind | None:
         """Extract TransactionKind from nested gRPC response; None if digest not found."""
-        if obj.transaction is None:
+        if obj.transaction is None or obj.transaction.transaction is None:
             return None
         return obj.transaction.transaction.kind
 
@@ -1206,7 +1235,7 @@ class ExecuteTransaction(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.TransactionExecutionServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.execute_transaction, sui_prot.ExecuteTransactionRequest(
@@ -1260,9 +1289,9 @@ class SimulateTransaction(absreq.PGRPC_Request):
         "pysui.sui.sui_grpc.pgrpc_requests.SimulateTransaction.to_request"
     )
     def to_request(
-        self, *, stub: sui_prot.StateServiceStub
+        self, *, stub: sui_prot.TransactionExecutionServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """Build the gRPC request tuple (stub_method, request_message)."""
         simtdata = sui_prot.SimulateTransactionRequest(
@@ -1355,9 +1384,9 @@ class SimulateTransactionKind(absreq.PGRPC_Request):
         "pysui.sui.sui_grpc.pgrpc_requests.SimulateTransactionKind.to_request"
     )
     def to_request(
-        self, *, stub: sui_prot.StateServiceStub
+        self, *, stub: sui_prot.TransactionExecutionServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         req = sui_prot.SimulateTransactionRequest(
@@ -1395,7 +1424,7 @@ class GetPackageVersions(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.list_package_versions, sui_prot.ListPackageVersionsRequest(
@@ -1428,7 +1457,7 @@ class GetPackage(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         if self.version is not None:
@@ -1468,7 +1497,7 @@ class GetMoveDataType(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.get_datatype, sui_prot.GetDatatypeRequest(
@@ -1527,16 +1556,18 @@ class GetStructures(GetPackage):
         self.module_name = module_name
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetStructures.render")
-    def render(self, package: sui_prot.GetPackageResponse) -> MoveStructuresGRPC:
+    def render(
+        self, package: sui_prot.GetPackageResponse
+    ) -> Optional[MoveStructuresGRPC]:
         """Render the response payload into MoveStructuresGRPC."""
+        if package.package is None:
+            return None
         result = list(
             filter(lambda x: x.name == self.module_name, package.package.modules)
         )
         if result:
             return MoveStructuresGRPC(result[0].datatypes)
-        raise ValueError(
-            f"Module '{self.module_name}' not found for {self.package_id}"
-        )
+        raise ValueError(f"Module '{self.module_name}' not found for {self.package_id}")
 
 
 class GetFunction(absreq.PGRPC_Request):
@@ -1556,7 +1587,7 @@ class GetFunction(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.MovePackageServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.get_function, sui_prot.GetFunctionRequest(
@@ -1576,16 +1607,18 @@ class GetFunctions(GetPackage):
         self.module_name = module_name
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetFunctions.render")
-    def render(self, package: sui_prot.GetPackageResponse) -> "MoveFunctionsGRPC":
+    def render(
+        self, package: sui_prot.GetPackageResponse
+    ) -> Optional["MoveFunctionsGRPC"]:
         """Render the response payload into MoveFunctionsGRPC."""
+        if package.package is None:
+            return None
         result = list(
             filter(lambda x: x.name == self.module_name, package.package.modules)
         )
         if result:
             return MoveFunctionsGRPC(result[0].functions)
-        raise ValueError(
-            f"Module '{self.module_name}' not found for {self.package_id}"
-        )
+        raise ValueError(f"Module '{self.module_name}' not found for {self.package_id}")
 
 
 class GetModule(GetPackage):
@@ -1598,16 +1631,16 @@ class GetModule(GetPackage):
         self.module_name = module_name
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetModule.render")
-    def render(self, package: sui_prot.GetPackageResponse) -> sui_prot.Module:
+    def render(self, package: sui_prot.GetPackageResponse) -> Optional[sui_prot.Module]:
         """Render the response payload to the matching Module entry."""
+        if package.package is None:
+            return None
         result = list(
             filter(lambda x: x.name == self.module_name, package.package.modules)
         )
         if result:
             return result[0]
-        raise ValueError(
-            f"Module '{self.module_name}' not found for {self.package_id}"
-        )
+        raise ValueError(f"Module '{self.module_name}' not found for {self.package_id}")
 
 
 class SubscribeCheckpoints(absreq.PGRPC_Request):
@@ -1635,7 +1668,7 @@ class SubscribeCheckpoints(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.SubscriptionServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., AsyncIterator[betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.subscribe_checkpoints, sui_prot.SubscribeCheckpointsRequest(
@@ -1668,7 +1701,7 @@ class SubscribeTransactions(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.SubscriptionServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., AsyncIterator[betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.subscribe_transactions, sui_prot.SubscribeTransactionsRequest(
@@ -1697,7 +1730,7 @@ class SubscribeEvents(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.SubscriptionServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., AsyncIterator[betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.subscribe_events, sui_prot.SubscribeEventsRequest(
@@ -1748,7 +1781,7 @@ class ListCheckpoints(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., AsyncIterator[betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.list_checkpoints, sui_prot.ListCheckpointsRequest(
@@ -1802,7 +1835,7 @@ class ListTransactions(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., AsyncIterator[betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.list_transactions, sui_prot.ListTransactionsRequest(
@@ -1856,7 +1889,7 @@ class ListEvents(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.LedgerServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., AsyncIterator[betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.list_events, sui_prot.ListEventsRequest(
@@ -1942,7 +1975,7 @@ class VerifySignature(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.SignatureVerificationServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.verify_signature, sui_prot.VerifySignatureRequest(
@@ -1974,7 +2007,7 @@ class GetNameServiceAddress(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.NameServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.lookup_name, sui_prot.LookupNameRequest(name=self.name)
@@ -2002,7 +2035,7 @@ class GetNameServiceNames(absreq.PGRPC_Request):
     def to_request(
         self, *, stub: sui_prot.NameServiceStub
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """."""
         return stub.reverse_lookup_name, sui_prot.ReverseLookupNameRequest(

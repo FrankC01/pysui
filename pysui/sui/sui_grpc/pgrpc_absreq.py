@@ -16,7 +16,7 @@ import abc
 from dataclasses import Field
 import enum
 from inspect import getmembers
-from typing import Callable, Optional
+from typing import Any, Callable, Coroutine, Optional
 
 import betterproto2
 from betterproto2 import grpclib as betterproto2_grpclib
@@ -67,7 +67,7 @@ class PGRPC_Request(abc.ABC):
         stub: betterproto2_grpclib.ServiceStub,
         field_mask: Optional[list] = None,
     ) -> tuple[
-        Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
+        Callable[..., Coroutine[Any, Any, betterproto2.Message]], betterproto2.Message
     ]:
         """Retrieve the function of the service and request object."""
 

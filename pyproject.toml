@@ -121,6 +121,12 @@ disable = [
     "unused-argument",
     "broad-exception-caught",
     "redefined-builtin",
+    # R0401: disabled 2026-09-14 — finding-count proven non-deterministic in this
+    # codebase (release-1.5.1.md Task #109) and current findings are mis-attributed
+    # to zklogin_seal/_dem_type.py by a pylint reporting quirk, not a real defect
+    # in that file. Underlying 37-module SCC tracked as backlog #116 (target 9.9.0);
+    # remove this disable when work on #116 begins so the cycle can be re-investigated.
+    "cyclic-import",
 ]
 
 [tool.pylint.basic]

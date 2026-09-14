@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- gRPC to_request() service stub alignment and return signature type hints
+
 ### Changed
 
 - updated gRPC protobuf shapes and requests
