@@ -951,6 +951,12 @@ class FundsWithdrawalSource(betterproto2.Enum):
 
     SPONSOR = 2
 
+    SENDER_ALLOWANCE = 3
+    """
+    Withdraw from `funder`'s balance under the `allowance` object, granted
+    to the sender of the transaction.
+    """
+
 
 class InputInputKind(betterproto2.Enum):
     INPUT_KIND_UNKNOWN = 0
@@ -3724,6 +3730,21 @@ class FundsWithdrawal(betterproto2.Message):
         3, betterproto2.TYPE_ENUM, optional=True
     )
 
+    funder: "str | None" = betterproto2.field(
+        4, betterproto2.TYPE_STRING, optional=True
+    )
+    """
+    The address whose balance is debited if `source` is `SENDER_ALLOWANCE`.
+    """
+
+    allowance: "str | None" = betterproto2.field(
+        5, betterproto2.TYPE_STRING, optional=True
+    )
+    """
+    `ObjectId` of the allowance object authorizing the withdrawal if `source`
+    is `SENDER_ALLOWANCE`.
+    """
+
 
 default_message_pool.register_message("sui.rpc.v2", "FundsWithdrawal", FundsWithdrawal)
 
@@ -4165,12 +4186,40 @@ default_message_pool.register_message("sui.rpc.v2", "GetObjectResult", GetObject
 
 @dataclass(eq=False, repr=False)
 class GetPackageRequest(betterproto2.Message):
+    """
+
+
+    Oneofs:
+        - selector: Optional. Return the package in `package_id`'s upgrade lineage that
+            matches one of the following:
+
+            - `version`: the package with exactly this version.
+            - `at_checkpoint`: the latest package that existed at or before this
+              checkpoint. Values above the current ledger tip resolve to the latest
+              known version.
+
+            If neither is set, the package stored at `package_id` is returned.
+    """
+
     package_id: "str | None" = betterproto2.field(
         1, betterproto2.TYPE_STRING, optional=True
     )
     """
-    Required. The `storage_id` of the requested package.
+    Required. The `storage_id` of any version of the requested package.
+
+    When `version` is not set, the package stored at exactly this id is
+    returned. When `version` is set, `package_id` only identifies the
+    package's upgrade lineage (via its original id), and the requested
+    version within that lineage is returned.
     """
+
+    version: "int | None" = betterproto2.field(
+        2, betterproto2.TYPE_UINT64, optional=True, group="selector"
+    )
+
+    at_checkpoint: "int | None" = betterproto2.field(
+        3, betterproto2.TYPE_UINT64, optional=True, group="selector"
+    )
 
 
 default_message_pool.register_message(

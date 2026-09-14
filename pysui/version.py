@@ -6,5 +6,5 @@
 """pysui package version."""
 
 # Read in command line and posting to PyPi
-__version__ = "1.5.1"
+__version__ = "1.6.0"
 """Pysui Version."""
