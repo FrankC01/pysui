@@ -799,19 +799,28 @@ class GetPackage(SuiCommand):
     compound_items_gql: ClassVar[list[tuple]] = []
 
     package: str
+    version: Optional[int] = None
+    at_checkpoint: Optional[int] = None
     next_page_token: Optional[bytes] = None
 
     @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPackage.gql_node")
     def gql_node(self) -> pgql_query.GetPackageSC:
         """Return GQL package query node."""
         return self.gql_class(
-            package=self.package, next_page_token=self.next_page_token
+            package=self.package,
+            version=self.version,
+            at_checkpoint=self.at_checkpoint,
+            next_page_token=self.next_page_token,
         )
 
     @sync_instrumented("pysui.sui.sui_common.sui_commands.GetPackage.grpc_request")
     def grpc_request(self) -> rn.GetPackage:
         """Return gRPC get-package request."""
-        return rn.GetPackage(package=self.package)
+        return rn.GetPackage(
+            package=self.package,
+            version=self.version,
+            at_checkpoint=self.at_checkpoint,
+        )
 
 
 @dataclass(kw_only=True)

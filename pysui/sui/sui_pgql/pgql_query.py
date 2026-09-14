@@ -3225,9 +3225,19 @@ class GetPackageSC(PGQL_QueryNode):
     """SC variant: encode_fn maps GQL package response to GetPackageResponse proto."""
 
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPackageSC.__init__")
-    def __init__(self, *, package: str, next_page_token: bytes | None = None, **kwargs):
+    def __init__(
+        self,
+        *,
+        package: str,
+        version: int | None = None,
+        at_checkpoint: int | None = None,
+        next_page_token: bytes | None = None,
+        **kwargs,
+    ):
         """Init with bytes-based cursor."""
         self.package = package
+        self.version = version
+        self.at_checkpoint = at_checkpoint
         self.next_page_token = next_page_token
 
     @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPackageSC.as_document_node")
@@ -3243,17 +3253,20 @@ class GetPackageSC(PGQL_QueryNode):
         enum_frag = frag.MoveEnumSC.fragment(schema)
         mod = frag.MoveModule.fragment(schema)
 
-        qres = schema.Query.object(address=self.package).select(
-            schema.Object.asMovePackage.select(
-                schema.MovePackage.address.alias("package_id"),
-                schema.MovePackage.version.alias("package_version"),
-                mod_q.select(
-                    schema.MoveModuleConnection.pageInfo.select(pg_cursor).alias(
-                        "cursor"
-                    ),
-                    schema.MoveModuleConnection.nodes.select(mod),
+        qres = schema.Query.package(address=self.package)
+        if self.version is not None:
+            qres(version=self.version)
+        elif self.at_checkpoint is not None:
+            qres(atCheckpoint=self.at_checkpoint)
+        qres.select(
+            schema.MovePackage.address.alias("package_id"),
+            schema.MovePackage.version.alias("package_version"),
+            mod_q.select(
+                schema.MoveModuleConnection.pageInfo.select(pg_cursor).alias(
+                    "cursor"
                 ),
-            )
+                schema.MoveModuleConnection.nodes.select(mod),
+            ),
         )
         return dsl_gql(pg_cursor, func, struc, enum_frag, mod, DSLQuery(qres))
 
@@ -3264,7 +3277,7 @@ class GetPackageSC(PGQL_QueryNode):
 
         @sync_instrumented("pysui.sui.sui_pgql.pgql_query.GetPackageSC._encode")
         def _encode(in_data: dict) -> sui_prot.GetPackageResponse:
-            pkg_raw = (in_data.get("object") or {}).get("asMovePackage") or {}
+            pkg_raw = in_data.get("package") or {}
             if not pkg_raw:
                 return sui_prot.GetPackageResponse(package=sui_prot.Package())
             package_id: str = pkg_raw.get("package_id") or ""

@@ -1415,10 +1415,14 @@ class GetPackage(absreq.PGRPC_Request):
         self,
         *,
         package: str,
+        version: Optional[int] = None,
+        at_checkpoint: Optional[int] = None,
     ) -> None:
         """Initializer."""
         super().__init__(absreq.Service.MOVEPACKAGE)
         self.package_id = package
+        self.version = version
+        self.at_checkpoint = at_checkpoint
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_requests.GetPackage.to_request")
     def to_request(
@@ -1427,6 +1431,14 @@ class GetPackage(absreq.PGRPC_Request):
         Callable[[betterproto2.Message], betterproto2.Message], betterproto2.Message
     ]:
         """."""
+        if self.version is not None:
+            return stub.get_package, sui_prot.GetPackageRequest(
+                package_id=self.package_id, version=self.version
+            )
+        if self.at_checkpoint is not None:
+            return stub.get_package, sui_prot.GetPackageRequest(
+                package_id=self.package_id, at_checkpoint=self.at_checkpoint
+            )
         return stub.get_package, sui_prot.GetPackageRequest(package_id=self.package_id)
 
 
