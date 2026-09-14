@@ -3,15 +3,18 @@
 
 # -*- coding: utf-8 -*-
 
+# dataclasses_json + dataclasses.dataclass decorator stacking confuses mypy's overload resolution for dataclass_json() — verified false positive, see Task #107 handoff (.claude/session-handoff-task107.md)
+# mypy: disable-error-code="call-overload"
+
 """Sui GraphQL configuration and constraings."""
 
 
 import dataclasses
-from typing import Any, Optional, Union, Callable
+from typing import Any, Optional, Callable
 import dataclasses_json
 
 import pysui.sui.sui_pgql.pgql_types as pgql_type
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 _QUERY_BETA = """
@@ -113,7 +116,7 @@ class SuiConfigGQL:
 
     @classmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_configs.SuiConfigGQL.from_query")
-    def from_query(clz, in_data: dict) -> "SuiConfigGQL":
+    def from_query(cls, in_data: dict) -> "SuiConfigGQL":
         """."""
         return SuiConfigGQL.from_dict(in_data)
 

@@ -6,7 +6,7 @@
 """Protocol-agnostic gas selection and budget utilities shared across GQL and gRPC paths."""
 
 import asyncio
-from typing import Callable, Optional, TypeVar, Union
+from typing import Callable, Optional, TypeVar
 
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
@@ -179,6 +179,7 @@ async def async_get_gas_data(
         if budget is None:
             budget = await _simulate_budget()
 
+    assert budget is not None
     _reserved = budget + gas_source_draw
 
     import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot

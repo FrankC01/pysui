@@ -6,7 +6,11 @@
 """Protocol-neutral SuiCommand abstract base class."""
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
+
+if TYPE_CHECKING:
+    from pysui.sui.sui_grpc.pgrpc_absreq import PGRPC_Request
+    from pysui.sui.sui_pgql.pgql_clients import PGQL_QueryNode
 
 
 class SuiCommand(ABC):

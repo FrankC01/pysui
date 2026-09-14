@@ -7,24 +7,20 @@
 """Async Transaction Builder — protocol-agnostic PTB for gRPC and async GQL paths."""
 
 import logging
-import binascii
-from math import ceil
 from typing import Any, Optional, Union
-from functools import singledispatchmethod
 
 from deprecated.sphinx import versionchanged, versionadded
-from pysui.sui.sui_common.types import TransactionConstraints
 
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_common.txn_pure import PureInput
-from pysui.sui.sui_utils import serialize_uint32_as_uleb128, hexstring_to_sui_id
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_utils import hexstring_to_sui_id
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 # Well known aliases
 _SUI_PACKAGE_ID: bcs.Address = bcs.Address.from_str("0x2")
 _SUI_PACKAGE_MODULE: str = "package"
-_SUI_PACAKGE_AUTHORIZE_UPGRADE: str = "authorize_upgrade"
-_SUI_PACAKGE_COMMIt_UPGRADE: str = "commit_upgrade"
+_SUI_PACKAGE_AUTHORIZE_UPGRADE: str = "authorize_upgrade"
+_SUI_PACKAGE_COMMIT_UPGRADE: str = "commit_upgrade"
 
 # Standard library logging setup
 logger = logging.getLogger(__name__)
@@ -106,12 +102,14 @@ class ProgrammableTransactionBuilder:
         if key.enum_name == "Pure":
             if self.compress_inputs:
                 if (e_index := self._find_duplicate_pure(key.value)) is not None:
-                    logger.debug(f"Duplicate object input found at index {e_index}, reusing")
+                    logger.debug(
+                        "Duplicate object input found at index %s, reusing", e_index
+                    )
                     return bcs.Argument("Input", e_index)
             self.inputs[key] = bcs.CallArg(key.enum_name, key.value)
         else:
             raise ValueError(f"Expected Pure builder arg, found {key.enum_name}")
-        logger.debug(f"New pure input created at index {out_index}")
+        logger.debug("New pure input created at index %s", out_index)
         return bcs.Argument("Input", out_index)
 
     @sync_instrumented("pysui.sui.sui_common.txn_transaction_builder.ProgrammableTransactionBuilder._find_duplicate_obj")
@@ -135,7 +133,9 @@ class ProgrammableTransactionBuilder:
         if key.enum_name == "Object" and isinstance(object_arg, bcs.ObjectArg):
             if self.compress_inputs:
                 if (e_index := self._find_duplicate_obj(object_arg)) is not None:
-                    logger.debug(f"Duplicate object input found at index {e_index}, reusing")
+                    logger.debug(
+                        "Duplicate object input found at index %s, reusing", e_index
+                    )
                     return bcs.Argument("Input", e_index)
             self.inputs[key] = bcs.CallArg(key.enum_name, object_arg)
             self.objects_registry[key.value.to_address_str()] = object_arg.enum_name
@@ -154,7 +154,7 @@ class ProgrammableTransactionBuilder:
             raise ValueError(
                 f"Expected Object builder arg and ObjectArg, found {key.enum_name} and {type(object_arg)}"
             )
-        logger.debug(f"New object input created at index {out_index}")
+        logger.debug("New object input created at index %s", out_index)
         return bcs.Argument("Input", out_index)
 
     @versionadded(version="0.54.0", reason="Support stand-alone ObjectArg")
@@ -254,10 +254,10 @@ class ProgrammableTransactionBuilder:
         """
         self.command_frequency[command_obj.enum_name] += 1
         out_index = len(self.commands)
-        logger.debug(f"Adding command {out_index}")
+        logger.debug("Adding command %s", out_index)
         self.commands.append(command_obj)
         if nresults > 1:
-            logger.debug(f"Creating nested result return for {nresults} elements")
+            logger.debug("Creating nested result return for %s elements", nresults)
             nreslist: list[bcs.Argument] = []
             for nrindex in range(nresults):
                 nreslist.append(bcs.Argument("NestedResult", (out_index, nrindex)))
@@ -548,7 +548,7 @@ class ProgrammableTransactionBuilder:
                 bcs.ProgrammableMoveCall(
                     _SUI_PACKAGE_ID,
                     _SUI_PACKAGE_MODULE,
-                    _SUI_PACAKGE_AUTHORIZE_UPGRADE,
+                    _SUI_PACKAGE_AUTHORIZE_UPGRADE,
                     [],
                     [
                         ucap,
@@ -588,7 +588,7 @@ class ProgrammableTransactionBuilder:
                 bcs.ProgrammableMoveCall(
                     _SUI_PACKAGE_ID,
                     _SUI_PACKAGE_MODULE,
-                    _SUI_PACAKGE_COMMIt_UPGRADE,
+                    _SUI_PACKAGE_COMMIT_UPGRADE,
                     [],
                     [upgrade_cap, receipt],
                 ),

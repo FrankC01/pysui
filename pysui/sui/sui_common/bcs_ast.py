@@ -9,7 +9,7 @@ import ast
 import copy
 from collections import deque
 from typing import Any, Optional, Union, cast
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 class Node:
@@ -118,7 +118,7 @@ class BcsAst:
     @classmethod
     @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.structure_base")
     def structure_base(
-        clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
+        cls, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
     ) -> ast.ClassDef:
         """Return a canoser Struct class definition."""
         field_assign = ast.Assign(
@@ -134,7 +134,7 @@ class BcsAst:
 
         return ast.ClassDef(
             name,
-            [clz._BCS_STRUCT_BASE],
+            [cls._BCS_STRUCT_BASE],
             [],
             body,
             [],
@@ -144,7 +144,7 @@ class BcsAst:
     @classmethod
     @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.enum_base")
     def enum_base(
-        clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
+        cls, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
     ) -> ast.ClassDef:
         """Return a canoser RustEnum class definition."""
         field_assign = ast.Assign(
@@ -160,7 +160,7 @@ class BcsAst:
 
         return ast.ClassDef(
             name,
-            [clz._BCS_ENUM_BASE],
+            [cls._BCS_ENUM_BASE],
             [],
             body,
             [],
@@ -170,7 +170,7 @@ class BcsAst:
     @classmethod
     @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.optional_base")
     def optional_base(
-        clz, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
+        cls, name: str, field_expr: ast.AST, class_doc: Optional[str] = None
     ) -> ast.ClassDef:
         """Return a canoser RustOptional class definition."""
 
@@ -187,7 +187,7 @@ class BcsAst:
 
         return ast.ClassDef(
             name,
-            [clz._BCS_OPTIONAL_BASE],
+            [cls._BCS_OPTIONAL_BASE],
             [],
             body,
             [],
@@ -197,7 +197,7 @@ class BcsAst:
     @classmethod
     @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.optional_type")
     def optional_type(
-        clz,
+        cls,
         walker: NodeVisitor,
         name: str,
         field_expr: ast.AST,
@@ -224,7 +224,7 @@ class BcsAst:
     @classmethod
     @sync_instrumented("pysui.sui.sui_common.bcs_ast.BcsAst.generate_nested_vector")
     def generate_nested_vector(
-        clz, depth: int, walker: NodeVisitor, node: Node
+        cls, depth: int, walker: NodeVisitor, node: Node
     ) -> ast.List:
         """Create a BCS list or depth list of lists of data type in node."""
         assert depth > 0
@@ -232,12 +232,12 @@ class BcsAst:
         walker.put(ast.List([], ast.Load()))
         walker.visit(node.data)
         core_list = cast(ast.List, walker.get())
-        core_list.elts.extend([clz.CONSTANT_NONE, clz.CONSTANT_TRUE])
+        core_list.elts.extend([cls.CONSTANT_NONE, cls.CONSTANT_TRUE])
         # If depth > 1 then wrap the root list
         depth -= 1
         while depth:
             core_list = ast.List(
-                [core_list, clz.CONSTANT_NONE, clz.CONSTANT_TRUE], ast.Load()  # type: ignore[list-item]
+                [core_list, cls.CONSTANT_NONE, cls.CONSTANT_TRUE], ast.Load()  # type: ignore[list-item]
             )
             depth -= 1
         return core_list

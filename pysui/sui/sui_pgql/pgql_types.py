@@ -3,17 +3,18 @@
 
 # -*- coding: utf-8 -*-
 
+# dataclasses_json + dataclasses.dataclass decorator stacking confuses mypy's overload resolution for dataclass_json() — verified false positive, see Task #107 handoff (.claude/session-handoff-task107.md)
+# mypy: disable-error-code="call-overload"
+
 """Pysui data classes for GraphQL results."""
 
 from abc import ABC, abstractmethod
 
-import base64
 import dataclasses
 from enum import IntEnum
-from typing import Any, Optional, Union, Callable
+from typing import Any, Optional, Union
 import dataclasses_json
-import json
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 @sync_instrumented("pysui.sui.sui_pgql.pgql_types._fast_flat")
@@ -60,7 +61,7 @@ class NoopGQL(PGQL_Type):
 
     @classmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_types.NoopGQL.from_query")
-    def from_query(self) -> "NoopGQL":  # type: ignore[override]
+    def from_query(cls) -> "NoopGQL":  # type: ignore[override]
         """Deserialize from GraphQL query result dict."""
         return NoopGQL(PagingCursor(), [])
 
@@ -76,7 +77,7 @@ class ErrorGQL(PGQL_Type):
 
     @classmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_types.ErrorGQL.from_query")
-    def from_query(self, errors: Any) -> "ErrorGQL":  # type: ignore[override]
+    def from_query(cls, errors: Any) -> "ErrorGQL":  # type: ignore[override]
         """Deserialize from GraphQL query result dict."""
         return ErrorGQL(PagingCursor(), [], errors)
 
@@ -112,7 +113,7 @@ class ProtocolConfigGQL:
             if isinstance(v, bool):
                 return v
             if isinstance(v, str):
-                if v == "true" or v == "false":
+                if v in ("true", "false"):
                     return v
                 if v.count("."):
                     return float(v)
@@ -120,11 +121,11 @@ class ProtocolConfigGQL:
         return None
 
     @sync_instrumented("pysui.sui.sui_pgql.pgql_types.ProtocolConfigGQL.__post_init__")
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """."""
         # Convert configs key/val to dict of key/int
         cfg_dict: dict = {}
-        cnst_dict: dict = self.transaction_constraints.to_dict()
+        cnst_dict: dict = self.transaction_constraints.to_dict()  # type: ignore[union-attr]
         # Turn to key addressable dict
         for ckv in self.configs:
             cfg_dict[ckv.key] = self._value_to_type(ckv.value)
@@ -139,17 +140,17 @@ class ProtocolConfigGQL:
         # Set appropriate features
         feat_dict: dict = {k.key: k.value for k in self.featureFlags}
         # Receive objects
-        self.transaction_constraints.receive_objects = feat_dict.get(
+        self.transaction_constraints.receive_objects = feat_dict.get(  # type: ignore[union-attr]
             "receive_objects", False
         )
         # Use account balance for gas payments
-        self.transaction_constraints.enable_address_balance_gas_payments = (
+        self.transaction_constraints.enable_address_balance_gas_payments = (  # type: ignore[union-attr]
             feat_dict.get("enable_address_balance_gas_payments", False)
         )
 
     @classmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_types.ProtocolConfigGQL.from_query")
-    def from_query(clz, in_data: dict) -> "ProtocolConfigGQL":  # type: ignore[override]
+    def from_query(cls, in_data: dict) -> "ProtocolConfigGQL":  # type: ignore[override]
         """Deserialize from GraphQL query result dict."""
         return ProtocolConfigGQL.from_dict(in_data.pop("protocolConfigs"))  # type: ignore[attr-defined]
 
@@ -410,8 +411,7 @@ class MoveVectorArg:
                     return cls(
                         RefType.from_ref(in_ref), cls.from_body(in_ref, from_vec)  # type: ignore[arg-type]
                     )
-                else:
-                    from_vec = ivec
+                from_vec = ivec
             else:
                 key, value = next(iter(from_vec.items()))
                 if key == "datatype":
@@ -419,7 +419,7 @@ class MoveVectorArg:
                         RefType.from_ref(in_ref),  # type: ignore[arg-type]
                         MoveObjectRefArg.from_body(None, value),
                     )
-                elif (
+                if (
                     len(from_vec) == 1
                     and key == "typeParameter"
                     and isinstance(value, int)
@@ -428,8 +428,7 @@ class MoveVectorArg:
                         RefType.from_ref(in_ref),  # type: ignore[arg-type]
                         MoveAnyArg(RefType.from_ref("")),
                     )
-                else:
-                    raise ValueError(f"Can't resolve {from_vec}")
+                raise ValueError(f"Can't resolve {from_vec}")
         return cls(
             RefType.from_ref(in_ref),  # type: ignore[arg-type]
             (
@@ -454,7 +453,7 @@ class MoveFunctionGQL:
 
     @classmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_types.MoveFunctionGQL.from_query")
-    def from_query(clz, in_data: dict) -> "Union[MoveFunctionGQL, NoopGQL]":  # type: ignore[override]
+    def from_query(cls, in_data: dict) -> "Union[MoveFunctionGQL, NoopGQL]":  # type: ignore[override]
         """Deserialize from GraphQL query result dict."""
         if (
             in_data.get("object")

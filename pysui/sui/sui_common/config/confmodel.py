@@ -12,7 +12,7 @@ import dataclasses_json
 
 
 import pysui.sui.sui_common.config.confgroup as prfgrp
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 _GQL_DEFAULTS: dict = {
     "devnet": "https://sui-devnet.mystenlabs.com/graphql",

@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Optional
 
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectSummary, deleted_object_ids
 from pysui.sui.sui_common.types import TransactionEffects
-import pysui.sui.sui_bcs.bcs as bcs
 from pysui.sui.sui_common.instrumentation import count, instrumented, sync_instrumented
 
 if TYPE_CHECKING:
@@ -45,6 +44,7 @@ class _BaseCachingExecutor:
     ) -> dict:
         """Resolve deferred object inputs then build and sign, injecting gas from cache."""
         txn.inject_cache(self.cache)
+        use_gas: Optional[list]
         if gas_objects_override is not None:
             use_gas = gas_objects_override
         else:

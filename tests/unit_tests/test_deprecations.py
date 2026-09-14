@@ -57,6 +57,9 @@ def test_pysuiclient_abc_satisfied():
         def transaction(self, **kwargs):
             return MagicMock()
 
+        async def execute(self, *, command, timeout=None, headers=None):
+            return MagicMock()
+
     client = MinimalClient(pysui_config=MagicMock())
     assert client is not None
 

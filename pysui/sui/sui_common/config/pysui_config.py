@@ -10,7 +10,7 @@ from copy import deepcopy
 import platform
 from pathlib import Path
 from typing import Optional
-from deprecated.sphinx import versionchanged, versionadded, deprecated
+from deprecated.sphinx import versionchanged, versionadded
 
 from pysui.abstracts.client_keypair import SignatureScheme
 from pysui.sui.sui_common.config.conflegacy import load_client_yaml
@@ -19,7 +19,7 @@ from pysui.sui.sui_common.config.confmodel import (
     PysuiConfigModel,
 )
 import pysui.sui.sui_common.config.confgroup as cfg_group
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 class PysuiConfiguration:

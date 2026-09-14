@@ -12,8 +12,6 @@
 # -*- coding: utf-8 -*-
 
 """Abstraction package."""
-from pysui.abstracts.client_types import AbstractType, SuiBaseType, SuiScalarType
-from pysui.abstracts.client_config import ClientConfiguration, CrefType
 from pysui.abstracts.client_keypair import (
     KeyPair,
     PublicKey,

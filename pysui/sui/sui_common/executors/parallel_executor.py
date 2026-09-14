@@ -10,7 +10,6 @@ import asyncio
 from typing import TYPE_CHECKING
 
 from pysui.sui.sui_common.executors.base_parallel_executor import _BaseParallelExecutor
-from pysui.sui.sui_common.executors.exec_types import ExecutorOptions
 from pysui.sui.sui_common.executors._queue_types import _SENTINEL
 from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 

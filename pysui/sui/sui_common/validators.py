@@ -17,7 +17,7 @@ from pysui.sui.sui_constants import (
     SUI_MIN_ALIAS_LEN,
     SUI_MAX_ALIAS_LEN,
 )
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 __partstring_pattern: re.Pattern = re.compile(r"[0-9a-fA-F]{1,64}")
@@ -60,7 +60,7 @@ class ValidateSuiTriple(argparse.Action):
         option_string=None,
     ):
         if values.count("::") == 2:
-            addy, module, tail = values.split("::")
+            addy, _, _ = values.split("::")
             if valid_sui_address(addy):
                 setattr(namespace, self.dest, values)
             else:
@@ -238,10 +238,11 @@ class ValidateB64(argparse.Action):
         """Validate."""
         try:
             if isinstance(values, list):
-                res: list[bytes] | bytes = [base64.b64decode(x, validate=True) for x in values]
+                for x in values:
+                    base64.b64decode(x, validate=True)
             else:
                 assert isinstance(values, str)
-                res = base64.b64decode(values, validate=True)
+                base64.b64decode(values, validate=True)
             setattr(namespace, self.dest, values)
-        except binascii.Error as bae:
+        except binascii.Error:
             parser.error(f"{values} invalide base64 string")

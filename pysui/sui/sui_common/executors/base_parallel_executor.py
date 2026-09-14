@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pysui.sui.sui_common.async_txn import AsyncSuiTransaction
-    import pysui.sui.sui_bcs.bcs as bcs
+    from pysui.sui.sui_bcs import bcs
 
 from pysui.sui.sui_common.txn_signing import SignerBlock
 from pysui.sui.sui_common.executors.exec_types import (

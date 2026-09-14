@@ -3,13 +3,14 @@
 
 # -*- coding: utf-8 -*-
 
+# dataclasses_json + dataclasses.dataclass decorator stacking confuses mypy's overload resolution for dataclass_json() — verified false positive, see Task #107 handoff (.claude/session-handoff-task107.md)
+# mypy: disable-error-code="call-overload"
 
 """Data classes for mtobcs directives."""
-from typing import Union
 import os
 import dataclasses
 import dataclasses_json
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 @dataclasses_json.dataclass_json(
@@ -58,16 +59,16 @@ class Targets:
 
     @classmethod
     @sync_instrumented("pysui.sui.sui_common.mtobcs_types.Targets.load_declarations")
-    def load_declarations(cls, in_data):
+    def load_declarations(cls, in_data: dict) -> "Targets":
         """."""
         targlist: list = []
         if in_data:
-            for target in in_data.get("targets"):
+            for target in in_data.get("targets", []):
                 match target["type"]:
                     case "Structure":
-                        targlist.append(Structure.from_dict(target))
+                        targlist.append(Structure.from_dict(target))  # type: ignore[attr-defined]
                     case "GenericStructure":
-                        targlist.append(GenericStructure.from_dict(target))
+                        targlist.append(GenericStructure.from_dict(target))  # type: ignore[attr-defined]
                     case _:
                         raise ValueError("Uknown type in mtobcs declarations.")
             return cls(targlist)

@@ -7,8 +7,8 @@
 
 from typing import Any
 
-import pysui.sui.sui_bcs.bcs as bcs
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_bcs import bcs
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 
 @sync_instrumented("pysui.sui.sui_common.executors.object_id_extract.extract_object_id")

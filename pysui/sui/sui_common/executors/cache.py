@@ -6,7 +6,6 @@
 """Sui Transaction Executor Caches."""
 
 from abc import ABC, abstractmethod
-import asyncio
 import logging
 from typing import TYPE_CHECKING, Any, Literal, Union
 from dataclasses import dataclass
@@ -198,7 +197,7 @@ class AsyncInMemoryCache(AbstractAsyncCache):
     """In memory async cache."""
 
     @sync_instrumented("pysui.sui.sui_common.executors.cache.AsyncInMemoryCache.__init__")
-    def __init__(self):
+    def __init__(self) -> None:
         """."""
         self._cache: dict[
             str, dict[str, Union[ObjectSummary, MoveFunctionCacheEntry, Any]]

@@ -9,7 +9,6 @@ from typing import Optional
 from deprecated.sphinx import versionchanged
 from gql import Client, gql
 from gql.client import ReconnectingAsyncClientSession
-import httpx
 
 from gql.transport.httpx import HTTPXTransport
 from gql.transport.httpx import HTTPXAsyncTransport
@@ -17,7 +16,7 @@ from gql.transport.httpx import HTTPXAsyncTransport
 from gql.dsl import (
     DSLSchema,
 )
-from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL, pgql_config, SuiConfigGQL
+from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL, pgql_config
 from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 
@@ -69,7 +68,7 @@ class Schema:
             self._dsl_schema: DSLSchema = _schema
             self._graph_url: str = gql_url
             self._sync_client: Client = _init_client
-            self._async_client: Client = None
+            self._async_client: Optional[Client] = None
             self._async_session: ReconnectingAsyncClientSession = None
 
     @property

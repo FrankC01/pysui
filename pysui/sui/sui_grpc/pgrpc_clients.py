@@ -3,6 +3,9 @@
 
 # -*- coding: utf-8 -*-
 
+# dataclasses_json + dataclasses.dataclass decorator stacking confuses mypy's overload resolution for dataclass_json() — verified false positive, see Task #107 handoff (.claude/session-handoff-task107.md)
+# mypy: disable-error-code="call-overload"
+
 """pysui gRPC Clients"""
 
 import asyncio
@@ -12,12 +15,8 @@ import inspect
 import logging
 from typing import (
     Any,
-    Awaitable,
     ClassVar,
     Optional,
-    TypeAlias,
-    Union,
-    Literal,
     TYPE_CHECKING,
 )
 import traceback
@@ -31,30 +30,22 @@ if TYPE_CHECKING:
 
 import betterproto2
 import dataclasses_json
-from deprecated.sphinx import deprecated
+from grpclib.client import Channel
 from grpclib.const import Status as GRPCStatus
 from grpclib.exceptions import GRPCError
 
-from pysui import SDK_CURRENT_VERSION
-from pysui.sui.sui_common.client import PysuiClient
+from pysui import SuiRpcResult, PysuiConfiguration
 from pysui.abstracts.async_client import AsyncClientBase
-from pysui.sui.sui_common.sui_command import SuiCommand
-
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch
+import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
+from pysui.sui.sui_common.client import PysuiClient
 from pysui.sui.sui_common.instrumentation import (
     instrumented,
     measure,
     sync_instrumented,
 )
-
-
-import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
-
-
-from grpclib.client import Channel
-
-from pysui import SuiRpcResult, PysuiConfiguration
+from pysui.sui.sui_common.sui_command import SuiCommand
 from pysui.sui.sui_common.types import TransactionConstraints
 
 logger = logging.getLogger("pgrpc_client")
@@ -87,7 +78,7 @@ def _map_pconstraints(in_bound: sui_prot.ProtocolConfig):
     return ProtocolConfig(TransactionConstraints(*ordered_list))
 
 
-class GrpcProtocolClient(AsyncClientBase, PysuiClient):
+class GrpcProtocolClient(PysuiClient, AsyncClientBase):
     """Asynchronous gRPC client."""
 
     _protocol: ClassVar[str] = "grpc"
@@ -112,37 +103,42 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
             )
         self._channels: list[Channel] = []
         self._protocol_config: ProtocolConfig = None
+        self._gas_price: int = None
 
     @property
-    @instrumented(
+    @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_clients.GrpcProtocolClient.current_gas_price"
     )
-    async def current_gas_price(self) -> int:
+    def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
-        result = await self.execute_grpc_request(request=GetEpoch())
-        if result.is_ok():
-            return result.result_data.epoch.reference_gas_price
-        raise ValueError(f"Error accessing gRPC {result.result_string}")
+        return self._gas_price
 
     @instrumented("grpc._init_protocol")
     async def _init_protocol(self, epoch_number: Optional[int] = None) -> None:
-        """Fetch and cache protocol constraints at init time."""
+        """Fetch and cache protocol constraints and gas price at init time."""
         result = await self.execute_grpc_request(
             request=GetEpoch(
                 epoch_number=epoch_number,
-                field_mask=["protocol_config"],
+                field_mask=["protocol_config", "reference_gas_price"],
             )
         )
         if result.is_ok() and hasattr(result.result_data.epoch, "protocol_config"):
             self._protocol_config = _map_pconstraints(
                 result.result_data.epoch.protocol_config
             )
+            self._gas_price = result.result_data.epoch.reference_gas_price
             return
         raise ValueError(f"protocol fetch returned {result.result_string}")
 
     @sync_instrumented("pysui.sui.sui_grpc.pgrpc_clients.GrpcProtocolClient.protocol")
-    def protocol(self, epoch_number: Optional[int] = None) -> ProtocolConfig:
-        """Return cached protocol constraints."""
+    def protocol(  # pylint: disable=arguments-renamed
+        self, epoch_number: Optional[int] = None
+    ) -> ProtocolConfig:
+        """Return cached protocol constraints.
+
+        Accepts ``epoch_number`` (int) rather than the ABC's ``for_version``
+        (str): Sui epochs are identified by number, not a version string.
+        """
         return self._protocol_config
 
     @instrumented("grpc.close")
@@ -199,8 +195,8 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
 
     @instrumented("grpc.serial_executor")
     async def serial_executor(
-        self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions"
-    ) -> "pysui.sui.sui_common.executors.serial_executor.SerialExecutor":
+        self, *, options: "ExecutorOptions"
+    ) -> "SerialExecutor":
         """Async factory: create and initialize a SerialExecutor.
 
         Performs coin selection, merging, and gas state seeding before returning
@@ -217,8 +213,8 @@ class GrpcProtocolClient(AsyncClientBase, PysuiClient):
 
     @instrumented("grpc.parallel_executor")
     async def parallel_executor(
-        self, *, options: "pysui.sui.sui_common.executors.exec_types.ExecutorOptions"
-    ) -> "pysui.sui.sui_common.executors.parallel_executor.ParallelExecutor":
+        self, *, options: "ExecutorOptions"
+    ) -> "ParallelExecutor":
         """Async factory: create and initialize a ParallelExecutor.
 
         Performs coin selection and gas state seeding before returning
@@ -379,16 +375,15 @@ def _clean_url(url: str) -> tuple[str | None, int | None] | None:
     :rtype: tuple[str | None, int | None] | None
     """
     try:
-        up: urlparse.ParseResultBytes = urlparse.urlparse(url)
+        up: urlparse.ParseResult = urlparse.urlparse(url)
         if up.netloc:
             url_out = up.netloc.split(":")[0]
             port_out = up.port
             return url_out, port_out
-        elif up.scheme:
+        if up.scheme:
             url_out = up.scheme
             port_out = int(up.path)
             return url_out, port_out
-        else:
-            return ()
+        return ()
     except ValueError:
         return ()

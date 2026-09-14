@@ -92,6 +92,7 @@ if __name__ == "__main__":
 
     @instrumented("pysui.sui.sui_common.executors.queue.test")
     async def test():
+        """Ad-hoc smoke test for SerialQueue when this module is run as a script."""
         ser = SerialQueue()
 
         @instrumented("pysui.sui.sui_common.executors.queue.sample_task")

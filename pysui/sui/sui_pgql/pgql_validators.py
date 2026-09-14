@@ -11,7 +11,7 @@ from deprecated.sphinx import versionchanged
 
 from pysui import PysuiConfiguration
 from pysui.sui.sui_constants import SUI_HEX_ADDRESS_STRING_LEN
-from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
+from pysui.sui.sui_common.instrumentation import sync_instrumented
 
 # owner lengths
 """Length of valid owner string with '0x' prefix."""

@@ -157,7 +157,7 @@ def update_tracked_balance_from_accumulator(executed_tx, tracked_balance: int) -
                 op_name = getattr(acc.operation, "name", str(acc.operation))
                 if op_name == "MERGE":
                     return tracked_balance + (acc.integer_value or 0)
-                elif op_name == "SPLIT":
+                if op_name == "SPLIT":
                     return max(0, tracked_balance - (acc.integer_value or 0))
             break
     return tracked_balance

@@ -31,6 +31,7 @@ import pysui.sui.sui_common.sui_commands as cmd
 import pysui.sui.sui_grpc.suimsgs.sui.rpc.v2 as sui_prot
 from pysui.sui.sui_common.txn_tx_argparse import TxnArgParse, TxnArgMode
 from pysui.sui.sui_common.executors.cache import AsyncObjectCache, ObjectSummary
+from pysui.sui.sui_common.shared_types import MAX_MULTI_OBJECT_FETCH
 from pysui.sui.sui_common.async_funcs import AsyncLRU
 from pysui.sui.sui_common.instrumentation import (
     instrumented,
@@ -81,7 +82,7 @@ def _build_coin_reservation_ref(
     )
     acc_id_bytes = hashlib.blake2b(hash_input, digest_size=32).digest()
 
-    chain_bytes = bytes(bcs.Digest.from_str(chain_id).Digest)
+    chain_bytes = bytes(bcs.Digest.from_str(chain_id).Digest)  # pylint: disable=no-member
     obj_id_bytes = bytes(a ^ b for a, b in zip(acc_id_bytes, chain_bytes))
 
     return bcs.ObjectReference(
@@ -184,7 +185,7 @@ class AsyncSuiTransaction(txbase):
         self._executed = False
         self._built_transaction: Optional[bcs.TransactionData] = None
         self._object_cache = object_cache
-        self._argparse = TxnArgParse(client)
+        self._argparse: TxnArgParse = TxnArgParse(client)
 
     def inject_cache(self, cache: AsyncObjectCache) -> None:
         """Inject an external object cache for use during deferred input resolution."""
@@ -227,7 +228,7 @@ class AsyncSuiTransaction(txbase):
                     grpc_to_raw_parameters(mfunc),
                 )
         except ValueError as ve:
-            raise ValueError(f"{target} {ve.args}")
+            raise ValueError(f"{target} {ve.args}") from ve
         raise ValueError(f"Unresolvable target {target}")
 
     @instrumented(
@@ -270,23 +271,26 @@ class AsyncSuiTransaction(txbase):
             fetch_ids[idx] = unobj.ObjectStr
 
         if fetch_ids:
-            result = await self.client.execute(
-                command=GetMultipleObjectSummary(object_ids=list(fetch_ids.values()))
-            )
-            if not result.is_ok():
-                raise ValueError(f"Object resolution failed: {result.result_string}")
+            fetch_items = list(fetch_ids.items())
+            for page_start in range(0, len(fetch_items), MAX_MULTI_OBJECT_FETCH):
+                page = dict(fetch_items[page_start : page_start + MAX_MULTI_OBJECT_FETCH])
+                result = await self.client.execute(
+                    command=GetMultipleObjectSummary(object_ids=list(page.values()))
+                )
+                if not result.is_ok():
+                    raise ValueError(f"Object resolution failed: {result.result_string}")
 
-            id_to_indices: dict[str, list[int]] = {}
-            for k, v in fetch_ids.items():
-                id_to_indices.setdefault(v.lower(), []).append(k)
-            for entry in result.result_data.objects:
-                indices = id_to_indices.get(entry.objectId.lower())
-                if not indices:
-                    continue
-                if cache:
-                    await cache.add_object(entry)
-                for idx in indices:
-                    resolved[idx] = _unresolved_to_builder_arg(unresolved[idx], entry)
+                id_to_indices: dict[str, list[int]] = {}
+                for k, v in page.items():
+                    id_to_indices.setdefault(v.lower(), []).append(k)
+                for entry in result.result_data.objects:
+                    indices = id_to_indices.get(entry.objectId.lower())
+                    if not indices:
+                        continue
+                    if cache:
+                        await cache.add_object(entry)
+                    for idx in indices:
+                        resolved[idx] = _unresolved_to_builder_arg(unresolved[idx], entry)
 
             missing = [fetch_ids[idx] for idx in fetch_ids if idx not in resolved]
             if missing:
@@ -1332,7 +1336,7 @@ class AsyncSuiTransaction(txbase):
             )
             if result.is_err():
                 raise ValueError(f"Validating upgrade cap: {result.result_string}")
-            elif result.result_data is None or isinstance(
+            if result.result_data is None or isinstance(
                 result.result_data, pgql_type.NoopGQL
             ):
                 raise ValueError(
@@ -1366,8 +1370,7 @@ class AsyncSuiTransaction(txbase):
                     auth_cmd,
                 ),
             )
-        else:
-            raise ValueError("Not a valid upgrade cap.")
+        raise ValueError("Not a valid upgrade cap.")
 
     @instrumented("ptb.cmd.custom_upgrade")
     @_invalidates_build
@@ -1424,5 +1427,4 @@ class AsyncSuiTransaction(txbase):
                 modules, dependencies, package_id, upgrade_ticket
             )
             return await commit_upgrade_fn(self, upgrade_cap, receipt)
-        else:
-            raise ValueError("Not a valid upgrade cap.")
+        raise ValueError("Not a valid upgrade cap.")

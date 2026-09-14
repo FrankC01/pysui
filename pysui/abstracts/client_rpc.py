@@ -42,4 +42,3 @@ class RpcResult(ABC):
     @abstractmethod
     def result_string(self) -> str:
         """Get result data."""
-

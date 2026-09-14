@@ -26,6 +26,7 @@ class GasStatus(Enum):
     OK = "ok"
     NEED_FUNDS = "need_funds"
     NEED_FUNDS_AND_RETRY = "need_funds_and_retry"
+    EQUIVOCATION_RETRY = "equivocation_retry"
     TXN_ERROR = "txn_error"
 
 
