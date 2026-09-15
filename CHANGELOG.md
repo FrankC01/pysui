@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - [enhancement](https://github.com/FrankC01/pysui/issues/414) Added version/checkpoint optional args to GetPackage SuiCommand
+- [enhancement](https://github.com/FrankC01/pysui/issues/415) Added SENDER_ALLOWANCE funder/allowance options to PTB funds-withdrawal commands (`withdrawal`, `create_balance`, `coin_from_address_accumulator`)
 
 ### Fixed
 

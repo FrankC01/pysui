@@ -575,10 +575,23 @@ class WithdrawalType(canoser.RustEnum):
 
 
 @versionadded(version="0.97.0", reason="Support for Address balance management.")
+class SenderAllowance(canoser.Struct):
+    """Funder and allowance object for a SENDER_ALLOWANCE withdrawal."""
+
+    _fields = [
+        ("Funder", Address),
+        ("Allowance", Address),
+    ]
+
+
 class WithdrawFrom(canoser.RustEnum):
     """Source of withdrawal."""
 
-    _enums = [("SENDER", None), ("SPONSOR", None)]
+    _enums = [
+        ("SENDER", None),
+        ("SPONSOR", None),
+        ("SENDER_ALLOWANCE", SenderAllowance),
+    ]
 
 
 @versionadded(version="0.97.0", reason="Support for Address balance management.")
@@ -595,17 +608,29 @@ class FundsWithdrawal(canoser.Struct):
         """Create a gRPC input from FundsWithdrawal"""
         amount = self.Reservation.value
         c_type = self.Type_.value.type_tag_to_str()
+        funder = None
+        allowance = None
         if self.Source.enum_name == "SENDER":
             source = sui_prot.FundsWithdrawalSource.SENDER
         elif self.Source.enum_name == "SPONSOR":
             source = sui_prot.FundsWithdrawalSource.SPONSOR
+        elif self.Source.enum_name == "SENDER_ALLOWANCE":
+            source = sui_prot.FundsWithdrawalSource.SENDER_ALLOWANCE
+            funder = self.Source.value.Funder.to_address_str()
+            allowance = self.Source.value.Allowance.to_address_str()
         else:
-            raise ValueError(f"Expected SENDER or SOURCE found {self.Source.enum_name}")
+            raise ValueError(
+                f"Expected SENDER, SPONSOR or SENDER_ALLOWANCE found {self.Source.enum_name}"
+            )
 
         return sui_prot.Input(
             kind=sui_prot.InputInputKind.FUNDS_WITHDRAWAL,
             funds_withdrawal=sui_prot.FundsWithdrawal(
-                amount=amount, coin_type=c_type, source=source
+                amount=amount,
+                coin_type=c_type,
+                source=source,
+                funder=funder,
+                allowance=allowance,
             ),
         )
 

@@ -125,6 +125,31 @@ def _unresolved_to_builder_arg(
     return (barg, carg)
 
 
+def _build_withdraw_from(
+    *,
+    source: FundsSource,
+    funder: Optional[str],
+    allowance: Optional[str],
+) -> bcs.WithdrawFrom:
+    """Build a WithdrawFrom BCS value, validating funder/allowance against source."""
+    if source == FundsSource.SENDER_ALLOWANCE:
+        if funder is None or allowance is None:
+            raise ValueError(
+                "funder and allowance are both required when source is FundsSource.SENDER_ALLOWANCE"
+            )
+        return bcs.WithdrawFrom(
+            source.name,
+            bcs.SenderAllowance(
+                bcs.Address.from_str(funder), bcs.Address.from_str(allowance)
+            ),
+        )
+    if funder is not None or allowance is not None:
+        raise ValueError(
+            "funder and allowance are only valid when source is FundsSource.SENDER_ALLOWANCE"
+        )
+    return bcs.WithdrawFrom(source.name)
+
+
 def _invalidates_build(func):
     """Clears _built_transaction when a PTB command mutates the transaction."""
     import functools
@@ -989,8 +1014,10 @@ class AsyncSuiTransaction(txbase):
         amount: int,
         source: FundsSource = FundsSource.SENDER,
         coin_type: Optional[str] = None,
+        funder: Optional[str] = None,
+        allowance: Optional[str] = None,
     ) -> bcs.Argument:
-        """Withdraw Coin<T> from transaction source Sender or Sponsor account.
+        """Withdraw Coin<T> from transaction source Sender, Sponsor, or Sender-Allowance account.
 
         :param amount: The amount of `coin_type` to withdraw from `source`
         :type amount: int
@@ -998,6 +1025,10 @@ class AsyncSuiTransaction(txbase):
         :type source: FundsSource, optional
         :param coin_type: The package::module::type of coin; defaults to "0x2::sui::SUI"
         :type coin_type: Optional[str], optional
+        :param funder: Address whose balance is debited; required if source is FundsSource.SENDER_ALLOWANCE
+        :type funder: Optional[str], optional
+        :param allowance: ObjectID of the allowance object authorizing the withdrawal; required if source is FundsSource.SENDER_ALLOWANCE
+        :type allowance: Optional[str], optional
         :return: The Coin<T> argument — usable in subsequent commands
         :rtype: bcs.Argument
         """
@@ -1009,7 +1040,7 @@ class AsyncSuiTransaction(txbase):
         wdt = bcs.FundsWithdrawal(
             bcs.Reservation("Amount", amount),
             bcs.WithdrawalType("Balance", type_tag),
-            bcs.WithdrawFrom(source.name),
+            _build_withdraw_from(source=source, funder=funder, allowance=allowance),
         )
         return self.builder.move_call(
             target=bcs.Address.from_str("0x2"),
@@ -1027,8 +1058,10 @@ class AsyncSuiTransaction(txbase):
         amount: int,
         source: FundsSource = FundsSource.SENDER,
         coin_type: Optional[str] = None,
+        funder: Optional[str] = None,
+        allowance: Optional[str] = None,
     ) -> bcs.Argument:
-        """Withdraw Balance<T> from transaction source Sender or Sponsor account.
+        """Withdraw Balance<T> from transaction source Sender, Sponsor, or Sender-Allowance account.
 
         Unlike withdrawal(), this injects a balance::redeem_funds command and returns
         the resulting Balance<T> argument directly — usable in move_call arguments
@@ -1042,6 +1075,10 @@ class AsyncSuiTransaction(txbase):
         :type source: FundsSource, optional
         :param coin_type: The package::module::type of coin; defaults to "0x2::sui::SUI"
         :type coin_type: Optional[str], optional
+        :param funder: Address whose balance is debited; required if source is FundsSource.SENDER_ALLOWANCE
+        :type funder: Optional[str], optional
+        :param allowance: ObjectID of the allowance object authorizing the withdrawal; required if source is FundsSource.SENDER_ALLOWANCE
+        :type allowance: Optional[str], optional
         :return: The Balance<T> argument — usable in move_call arguments only
         :rtype: bcs.Argument
         """
@@ -1053,7 +1090,7 @@ class AsyncSuiTransaction(txbase):
         wdt = bcs.FundsWithdrawal(
             bcs.Reservation("Amount", amount),
             bcs.WithdrawalType("Balance", type_tag),
-            bcs.WithdrawFrom(source.name),
+            _build_withdraw_from(source=source, funder=funder, allowance=allowance),
         )
         return self.builder.move_call(
             target=bcs.Address.from_str("0x2"),
@@ -1071,6 +1108,8 @@ class AsyncSuiTransaction(txbase):
         amount: int,
         coin_type: Optional[str] = "0x2::sui::SUI",
         source: FundsSource = FundsSource.SENDER,
+        funder: Optional[str] = None,
+        allowance: Optional[str] = None,
     ) -> bcs.Argument:
         """Return a raw Withdrawal<T> argument for use in move_call arguments.
 
@@ -1085,6 +1124,10 @@ class AsyncSuiTransaction(txbase):
         :type coin_type: Optional[str], optional
         :param source: Source of funds, defaults to FundsSource.SENDER
         :type source: FundsSource, optional
+        :param funder: Address whose balance is debited; required if source is FundsSource.SENDER_ALLOWANCE
+        :type funder: Optional[str], optional
+        :param allowance: ObjectID of the allowance object authorizing the withdrawal; required if source is FundsSource.SENDER_ALLOWANCE
+        :type allowance: Optional[str], optional
         :return: The Withdrawal<T> argument — usable in move_call arguments only
         :rtype: bcs.Argument
         """
@@ -1092,7 +1135,7 @@ class AsyncSuiTransaction(txbase):
         wdt = bcs.FundsWithdrawal(
             bcs.Reservation("Amount", amount),
             bcs.WithdrawalType("Balance", type_tag),
-            bcs.WithdrawFrom(source.name),
+            _build_withdraw_from(source=source, funder=funder, allowance=allowance),
         )
         return self.builder.input_obj_from_withdrawal(wdt)
 

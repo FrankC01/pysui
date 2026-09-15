@@ -419,10 +419,11 @@ class _TransactionBase:
 
 
 class FundsSource(IntEnum):
-    """Enumeration of Sender or Sponser funds source."""
+    """Enumeration of Sender, Sponsor, or Sender-Allowance funds source."""
 
     SENDER = 0
     SPONSOR = 1
+    SENDER_ALLOWANCE = 2
 
 
 class _SuiTransactionBase(_TransactionBase):
