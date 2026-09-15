@@ -26,6 +26,12 @@ if _CRYPTO_AVAILABLE:
         compute_address_seed,
         compute_zklogin_address,
     )
+else:
+    generate_ephemeral_keypair = None  # type: ignore[assignment]  # pylint: disable=invalid-name
+    compute_nonce = None  # type: ignore[assignment]  # pylint: disable=invalid-name
+    extract_jwt_claims = None  # type: ignore[assignment]  # pylint: disable=invalid-name
+    compute_address_seed = None  # type: ignore[assignment]  # pylint: disable=invalid-name
+    compute_zklogin_address = None  # type: ignore[assignment]  # pylint: disable=invalid-name
 
 
 _SESSION_TOKEN = object()
@@ -33,6 +39,7 @@ _SESSION_TOKEN = object()
 
 class ZkClaimKey(str, Enum):
     """Selects which JWT claim anchors the zkLogin address derivation."""
+
     SUBJECT = "sub"
     AUDIENCE = "aud"
 
@@ -141,8 +148,12 @@ class ZkSession:
             elif key_claim_name == ZkClaimKey.AUDIENCE:
                 claim_value = aud
             else:
-                raise ValueError(f"key_claim_name must be ZkClaimKey.SUBJECT or ZkClaimKey.AUDIENCE, got '{key_claim_name}'")
-            address_seed = compute_address_seed(key_claim_name, claim_value, aud, self._client.salt)
+                raise ValueError(
+                    f"key_claim_name must be ZkClaimKey.SUBJECT or ZkClaimKey.AUDIENCE, got '{key_claim_name}'"
+                )
+            address_seed = compute_address_seed(
+                key_claim_name, claim_value, aud, self._client.salt
+            )
             address = compute_zklogin_address(iss, address_seed, legacy)
         except Exception as exc:
             raise ValueError(f"Failed to process JWT: {exc}") from exc
@@ -164,11 +175,17 @@ class ZkSession:
         jwt = self._jwt
 
         provider_entry = next(
-            (p for p in self._client.config.active_group.zklogin_providers if p.name == self._provider),
+            (
+                p
+                for p in self._client.config.active_group.zklogin_providers
+                if p.name == self._provider
+            ),
             None,
         )
         if provider_entry is None:
-            raise ValueError(f"Provider '{self._provider}' not found in active config group")
+            raise ValueError(
+                f"Provider '{self._provider}' not found in active config group"
+            )
 
         flag = 0x02 if self._as_secp256r1 else 0x00
         extended_epk = str(int.from_bytes(bytes([flag]) + self._epk_bytes, "big"))
@@ -192,7 +209,9 @@ class ZkSession:
         except httpx.HTTPError as exc:
             return SuiRpcResult(False, str(exc), None)
 
-        scheme = SignatureScheme.SECP256R1 if self._as_secp256r1 else SignatureScheme.ED25519
+        scheme = (
+            SignatureScheme.SECP256R1 if self._as_secp256r1 else SignatureScheme.ED25519
+        )
         self._keypair = ZkLoginKeyPair.create(
             scheme=scheme,
             pub_bytes=self._epk_bytes,

@@ -55,7 +55,9 @@ class BaseSuiObjectForCoin(PGQL_Fragment):
 
     @staticmethod
     @cache
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.BaseSuiObjectForCoin.fragment")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_fragments.BaseSuiObjectForCoin.fragment"
+    )
     def fragment(schema: DSLSchema) -> DSLFragment:
         """Return the reusable DSL fragment for this query node."""
         return (
@@ -900,7 +902,9 @@ class ConsensusCommitPrologueKind(PGQL_Fragment):
 
     @staticmethod
     @cache
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.ConsensusCommitPrologueKind.fragment")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_fragments.ConsensusCommitPrologueKind.fragment"
+    )
     def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
 
@@ -925,7 +929,9 @@ class AuthenticatorStateUpdateTransactionKind(PGQL_Fragment):
 
     @staticmethod
     @cache
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.AuthenticatorStateUpdateTransactionKind.fragment")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_fragments.AuthenticatorStateUpdateTransactionKind.fragment"
+    )
     def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
 
@@ -960,7 +966,9 @@ class RandomnessStateUpdateTransactionKind(PGQL_Fragment):
 
     @staticmethod
     @cache
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.RandomnessStateUpdateTransactionKind.fragment")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_fragments.RandomnessStateUpdateTransactionKind.fragment"
+    )
     def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
 
@@ -981,7 +989,9 @@ class ChangeEpochTransactionKind(PGQL_Fragment):
 
     @staticmethod
     @cache
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.ChangeEpochTransactionKind.fragment")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_fragments.ChangeEpochTransactionKind.fragment"
+    )
     def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         return (
@@ -1008,7 +1018,9 @@ class EndOfEpochTransactionKind(PGQL_Fragment):
 
     @staticmethod
     @cache
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.EndOfEpochTransactionKind.fragment")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_fragments.EndOfEpochTransactionKind.fragment"
+    )
     def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         chg_epoch = ChangeEpochTransactionKind.fragment(schema)
@@ -1041,7 +1053,9 @@ class StandardTransactionKind(PGQL_Fragment):
 
     @staticmethod
     @cache
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardTransactionKind.fragment")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_fragments.StandardTransactionKind.fragment"
+    )
     def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         prg_kind = ProgrammableTxKind.fragment(schema)
@@ -1144,7 +1158,9 @@ class StandardProtocolConfig(PGQL_Fragment):
 
     @staticmethod
     @cache
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_fragments.StandardProtocolConfig.fragment")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_fragments.StandardProtocolConfig.fragment"
+    )
     def fragment(schema: DSLSchema) -> DSLFragment:
         """."""
         return (

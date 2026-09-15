@@ -5,7 +5,6 @@
 
 """Sui high level Transaction Builder supports generation of TransactionKind and TransactionData."""
 
-
 import base64
 import hashlib
 import os
@@ -23,7 +22,7 @@ import pysui.sui.sui_common.txn_transaction_builder as tx_builder
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_bcs import bcs
 from pysui.sui.sui_utils import publish_buildg2
-from pysui.sui.sui_common.instrumentation import sync_instrumented
+from pysui.sui.sui_common.instrumentation import instrumented, sync_instrumented
 
 from .client import PysuiClient
 
@@ -272,12 +271,18 @@ class _TransactionBase:
         self._current_gas_price = new_price
 
     @staticmethod
-    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase._any_arg_is_gas_coin")
+    @sync_instrumented(
+        "pysui.sui.sui_common.txn_base._TransactionBase._any_arg_is_gas_coin"
+    )
     def _any_arg_is_gas_coin(args) -> bool:
         return any(a.enum_name == "GasCoin" for a in args)
 
-    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase._accumulate_split_coin_draw")
-    def _accumulate_split_coin_draw(self, cmd_val, inputs_list: list) -> tuple[bool, int]:
+    @sync_instrumented(
+        "pysui.sui.sui_common.txn_base._TransactionBase._accumulate_split_coin_draw"
+    )
+    def _accumulate_split_coin_draw(
+        self, cmd_val, inputs_list: list
+    ) -> tuple[bool, int]:
         """Process SplitCoin command for GasCoin usage and gas draw amount."""
         if cmd_val.FromCoin.enum_name != "GasCoin":
             return self._any_arg_is_gas_coin(cmd_val.Amount), 0
@@ -303,7 +308,9 @@ class _TransactionBase:
             draw += int.from_bytes(bytes(call_arg.value), "little")
         return True, draw
 
-    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase._inspect_ptb_for_gas_coin")
+    @sync_instrumented(
+        "pysui.sui.sui_common.txn_base._TransactionBase._inspect_ptb_for_gas_coin"
+    )
     def _inspect_ptb_for_gas_coin(self) -> tuple[bool, int]:
         """Inspect builder commands for GasCoin usage and accumulate gas-source draw.
 
@@ -324,17 +331,31 @@ class _TransactionBase:
                 uses_gas_coin = uses_gas_coin or used
                 gas_source_draw += draw
             elif cmd_name == "MergeCoins":
-                uses_gas_coin = uses_gas_coin or cmd_val.ToCoin.enum_name == "GasCoin" or self._any_arg_is_gas_coin(cmd_val.FromCoins)
+                uses_gas_coin = (
+                    uses_gas_coin
+                    or cmd_val.ToCoin.enum_name == "GasCoin"
+                    or self._any_arg_is_gas_coin(cmd_val.FromCoins)
+                )
             elif cmd_name == "TransferObjects":
-                uses_gas_coin = uses_gas_coin or self._any_arg_is_gas_coin(cmd_val.Objects) or cmd_val.Address.enum_name == "GasCoin"
+                uses_gas_coin = (
+                    uses_gas_coin
+                    or self._any_arg_is_gas_coin(cmd_val.Objects)
+                    or cmd_val.Address.enum_name == "GasCoin"
+                )
             elif cmd_name == "MoveCall":
-                uses_gas_coin = uses_gas_coin or self._any_arg_is_gas_coin(cmd_val.Arguments)
+                uses_gas_coin = uses_gas_coin or self._any_arg_is_gas_coin(
+                    cmd_val.Arguments
+                )
             elif cmd_name == "MakeMoveVec":
-                uses_gas_coin = uses_gas_coin or self._any_arg_is_gas_coin(cmd_val.Vector)
+                uses_gas_coin = uses_gas_coin or self._any_arg_is_gas_coin(
+                    cmd_val.Vector
+                )
 
         return uses_gas_coin, gas_source_draw
 
-    @sync_instrumented("pysui.sui.sui_common.txn_base._TransactionBase._inspect_ptb_for_gasless")
+    @sync_instrumented(
+        "pysui.sui.sui_common.txn_base._TransactionBase._inspect_ptb_for_gasless"
+    )
     def _inspect_ptb_for_gasless(self) -> Optional[list[str]]:
         """Inspect the PTB for gasless stablecoin transfer eligibility.
 
@@ -461,7 +482,9 @@ class _SuiTransactionBase(_TransactionBase):
         return self._sig_block
 
     @classmethod
-    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.digest_from_bytes")
+    @sync_instrumented(
+        "pysui.sui.sui_common.txn_base._SuiTransactionBase.digest_from_bytes"
+    )
     def digest_from_bytes(cls, transaction_data_bytes: bytes) -> str:
         """Return the base58 encoded digest from transaction byte string.
 
@@ -478,7 +501,9 @@ class _SuiTransactionBase(_TransactionBase):
         ).decode()
 
     @classmethod
-    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.digest_from_b64str")
+    @sync_instrumented(
+        "pysui.sui.sui_common.txn_base._SuiTransactionBase.digest_from_b64str"
+    )
     def digest_from_b64str(cls, transaction_data_bytes_str: str) -> str:
         """Return the base58 encoded digest from transaction base64 encoded string.
 
@@ -489,24 +514,26 @@ class _SuiTransactionBase(_TransactionBase):
         """
         return cls.digest_from_bytes(base64.b64decode(transaction_data_bytes_str))
 
-    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.raw_kind")
-    def raw_kind(self) -> bcs.TransactionKind:
+    @instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.raw_kind")
+    async def raw_kind(self) -> bcs.TransactionKind:
         """Returns the TransactionKind object hierarchy of inputs, returns and commands.
 
         This is useful for reviewing the transaction that will be executed or inspected.
         """
         return self.builder.finish_for_inspect()
 
-    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.build_for_dryrun")
-    def build_for_dryrun(self) -> str:
+    @instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase.build_for_dryrun")
+    async def build_for_dryrun(self) -> str:
         """Returns a base64 string that can be used in dry running transaction.
 
         :return: base64 string representation of underlying TransactionKind
         :rtype: str
         """
-        return base64.b64encode(self.raw_kind().serialize()).decode()
+        return base64.b64encode((await self.raw_kind()).serialize()).decode()
 
-    @sync_instrumented("pysui.sui.sui_common.txn_base._SuiTransactionBase._compile_source")
+    @sync_instrumented(
+        "pysui.sui.sui_common.txn_base._SuiTransactionBase._compile_source"
+    )
     def _compile_source(
         self,
         project_path: str,
@@ -532,7 +559,7 @@ class _SuiTransactionBase(_TransactionBase):
         )
         if isinstance(compiled_package, Exception):
             err: BaseException = compiled_package
-            raise err
+            raise err  # pylint: disable=raising-non-exception
         dependencies = [
             bcs.Address.from_str(x if isinstance(x, str) else x.value)
             for x in compiled_package.dependencies

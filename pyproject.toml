@@ -121,6 +121,11 @@ disable = [
     "unused-argument",
     "broad-exception-caught",
     "redefined-builtin",
+    # W1518: disabled 2026-09-15 — @cache/@lru_cache(maxsize=None) on instance
+    # methods is the deliberate, established pattern in pgql_fragments.py (29
+    # occurrences) to avoid re-building the same GraphQL fragment; per-instance
+    # retention is acceptable for this type. Task #108.
+    "method-cache-max-size-none",
     # R0401: disabled 2026-09-14 — finding-count proven non-deterministic in this
     # codebase (release-1.5.1.md Task #109) and current findings are mis-attributed
     # to zklogin_seal/_dem_type.py by a pylint reporting quirk, not a real defect

@@ -16,6 +16,8 @@ from typing import Any, Optional, Union
 import dataclasses_json
 from pysui.sui.sui_common.instrumentation import sync_instrumented
 
+# pylint: disable=arguments-differ
+
 
 @sync_instrumented("pysui.sui.sui_pgql.pgql_types._fast_flat")
 def _fast_flat(in_dict: dict, out_dict: dict):
@@ -77,9 +79,9 @@ class ErrorGQL(PGQL_Type):
 
     @classmethod
     @sync_instrumented("pysui.sui.sui_pgql.pgql_types.ErrorGQL.from_query")
-    def from_query(cls, errors: Any) -> "ErrorGQL":  # type: ignore[override]
+    def from_query(cls, in_data: Any = None) -> "ErrorGQL":  # type: ignore[override]
         """Deserialize from GraphQL query result dict."""
-        return ErrorGQL(PagingCursor(), [], errors)
+        return ErrorGQL(PagingCursor(), [], in_data)
 
 
 @dataclasses_json.dataclass_json
@@ -246,7 +248,9 @@ class OpenMoveTypeSignatureGQL:
     ]
 
     @classmethod
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_types.OpenMoveTypeSignatureGQL.from_query")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_types.OpenMoveTypeSignatureGQL.from_query"
+    )
     def from_query(cls, raw: dict) -> "OpenMoveTypeSignatureGQL":
         """Deserialize an OpenMoveTypeSignature scalar dict.
 

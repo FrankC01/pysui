@@ -599,6 +599,8 @@ class FundsWithdrawal(canoser.Struct):
             source = sui_prot.FundsWithdrawalSource.SENDER
         elif self.Source.enum_name == "SPONSOR":
             source = sui_prot.FundsWithdrawalSource.SPONSOR
+        else:
+            raise ValueError(f"Expected SENDER or SOURCE found {self.Source.enum_name}")
 
         return sui_prot.Input(
             kind=sui_prot.InputInputKind.FUNDS_WITHDRAWAL,
@@ -1271,13 +1273,13 @@ class SuiSignature(canoser.RustEnum):
     """
 
     _enums = [
-        ("Ed25519", Ed25519SigPayload),        # 0x00
-        ("Secp256k1", Secp256k1SigPayload),    # 0x01
-        ("Secp256r1", Secp256r1SigPayload),    # 0x02
-        ("MultiSig", MultiSigPayload),          # 0x03
-        ("Bls12381", Bls12381SigPayload),       # 0x04 — authority/validator only
-        ("ZkLogin", ZkLoginSigPayload),         # 0x05
-        ("Passkey", PasskeySigPayload),         # 0x06
+        ("Ed25519", Ed25519SigPayload),  # 0x00
+        ("Secp256k1", Secp256k1SigPayload),  # 0x01
+        ("Secp256r1", Secp256r1SigPayload),  # 0x02
+        ("MultiSig", MultiSigPayload),  # 0x03
+        ("Bls12381", Bls12381SigPayload),  # 0x04 — authority/validator only
+        ("ZkLogin", ZkLoginSigPayload),  # 0x05
+        ("Passkey", PasskeySigPayload),  # 0x06
     ]
 
 

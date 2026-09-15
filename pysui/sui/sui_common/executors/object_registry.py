@@ -206,7 +206,7 @@ _REGISTRY_INIT_LOCK = threading.Lock()
 @sync_instrumented("pysui.sui.sui_common.executors.object_registry.get_object_registry")
 def get_object_registry() -> AbstractObjectRegistry:
     """Return the process-wide singleton registry, creating it on first call."""
-    global _REGISTRY
+    global _REGISTRY  # pylint: disable=global-statement
     if _REGISTRY is None:
         with _REGISTRY_INIT_LOCK:
             if _REGISTRY is None:
@@ -217,5 +217,5 @@ def get_object_registry() -> AbstractObjectRegistry:
 @sync_instrumented("pysui.sui.sui_common.executors.object_registry._set_object_registry_for_tests")
 def _set_object_registry_for_tests(registry: Optional[AbstractObjectRegistry]) -> None:
     """Replace or clear the singleton. Call in pytest teardown to restore isolation."""
-    global _REGISTRY
+    global _REGISTRY  # pylint: disable=global-statement
     _REGISTRY = registry

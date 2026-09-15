@@ -13,9 +13,6 @@ from pysui import PysuiConfiguration
 from pysui.sui.sui_constants import SUI_HEX_ADDRESS_STRING_LEN
 from pysui.sui.sui_common.instrumentation import sync_instrumented
 
-# owner lengths
-"""Length of valid owner string with '0x' prefix."""
-
 
 class TypeValidator:
     """TypeValidator contains validation classmethods."""
@@ -62,7 +59,9 @@ class TypeValidator:
         return owner
 
     @classmethod
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_validators.TypeValidator.check_object_id")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_validators.TypeValidator.check_object_id"
+    )
     def check_object_id(cls, object_id: str) -> Union[str, ValueError]:
         """check_object_id Validates object id is well formed Sui object id string.
 
@@ -88,7 +87,9 @@ class TypeValidator:
         return object_id
 
     @classmethod
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_validators.TypeValidator.check_object_ids")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_validators.TypeValidator.check_object_ids"
+    )
     def check_object_ids(cls, object_ids: list[str]) -> Union[list[str], ValueError]:
         """check_object_ids Validate a list of object_ids
 
@@ -100,7 +101,9 @@ class TypeValidator:
         return [cls.check_object_id(x) for x in object_ids]
 
     @classmethod
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_validators.TypeValidator.check_target_triplet")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_validators.TypeValidator.check_target_triplet"
+    )
     def check_target_triplet(
         cls, target: str
     ) -> Union[tuple[str, str, str], ValueError]:

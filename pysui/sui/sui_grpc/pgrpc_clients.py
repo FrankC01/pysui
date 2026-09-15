@@ -34,7 +34,7 @@ from grpclib.client import Channel
 from grpclib.const import Status as GRPCStatus
 from grpclib.exceptions import GRPCError
 
-from pysui import SuiRpcResult, PysuiConfiguration
+from pysui import SuiRpcResult, PysuiConfiguration  # pylint: disable=ungrouped-imports
 from pysui.abstracts.async_client import AsyncClientBase
 import pysui.sui.sui_grpc.pgrpc_absreq as absreq
 from pysui.sui.sui_grpc.pgrpc_requests import GetEpoch

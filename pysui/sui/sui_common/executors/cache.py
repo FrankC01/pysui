@@ -30,7 +30,8 @@ def deleted_object_ids(*, effects: TransactionEffects) -> list[str]:
     return [
         changed.object_id
         for changed in effects.changed_objects
-        if changed.output_state == sui_prot.ChangedObjectOutputObjectState.DOES_NOT_EXIST
+        if changed.output_state
+        == sui_prot.ChangedObjectOutputObjectState.DOES_NOT_EXIST
     ]
 
 
@@ -127,21 +128,27 @@ class AbstractAsyncCache(ABC):
         # P2 fix: replace asyncio.gather on in-memory dict ops with direct iteration
         return [await self.add_object(x) for x in objs]
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AbstractAsyncCache.delete_object")
+    @instrumented(
+        "pysui.sui.sui_common.executors.cache.AbstractAsyncCache.delete_object"
+    )
     async def delete_object(self, oid: str):
         """Remove an object entry from both owned and shared/immutable buckets."""
         # P2 fix: replace asyncio.gather on in-memory dict ops with direct iteration
         await self._delete("OwnedObject", oid)
         await self._delete("SharedOrImmutableObject", oid)
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AbstractAsyncCache.delete_objects")
+    @instrumented(
+        "pysui.sui.sui_common.executors.cache.AbstractAsyncCache.delete_objects"
+    )
     async def delete_objects(self, oids: list[str]):
         """Remove multiple object entries from the cache."""
         # P2 fix: replace asyncio.gather on in-memory dict ops with direct iteration
         for oid in oids:
             await self.delete_object(oid)
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AbstractAsyncCache.get_move_function_definition")
+    @instrumented(
+        "pysui.sui.sui_common.executors.cache.AbstractAsyncCache.get_move_function_definition"
+    )
     async def get_move_function_definition(
         self,
         package,
@@ -152,7 +159,9 @@ class AbstractAsyncCache(ABC):
         ffull = f"{package}::{module}::{function}"
         return await self._get("MoveFunction", ffull)
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AbstractAsyncCache.add_move_function_definition")
+    @instrumented(
+        "pysui.sui.sui_common.executors.cache.AbstractAsyncCache.add_move_function_definition"
+    )
     async def add_move_function_definition(
         self, function_definition: MoveFunctionCacheEntry
     ):
@@ -166,7 +175,9 @@ class AbstractAsyncCache(ABC):
         )
         return entry
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AbstractAsyncCache.delete_move_function_definition")
+    @instrumented(
+        "pysui.sui.sui_common.executors.cache.AbstractAsyncCache.delete_move_function_definition"
+    )
     async def delete_move_function_definition(
         self,
         package,
@@ -187,7 +198,9 @@ class AbstractAsyncCache(ABC):
         """Set a value in the custom cache bucket."""
         return await self._set("Custom", key, value)
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AbstractAsyncCache.delete_custom")
+    @instrumented(
+        "pysui.sui.sui_common.executors.cache.AbstractAsyncCache.delete_custom"
+    )
     async def delete_custom(self, key: str):
         """Remove a value from the custom cache bucket."""
         return await self._delete("Custom", key)
@@ -196,7 +209,9 @@ class AbstractAsyncCache(ABC):
 class AsyncInMemoryCache(AbstractAsyncCache):
     """In memory async cache."""
 
-    @sync_instrumented("pysui.sui.sui_common.executors.cache.AsyncInMemoryCache.__init__")
+    @sync_instrumented(
+        "pysui.sui.sui_common.executors.cache.AsyncInMemoryCache.__init__"
+    )
     def __init__(self) -> None:
         """."""
         self._cache: dict[
@@ -210,18 +225,18 @@ class AsyncInMemoryCache(AbstractAsyncCache):
 
     @instrumented("pysui.sui.sui_common.executors.cache.AsyncInMemoryCache._get")
     async def _get(
-        self, cache_type: str, entry_type: str
+        self, cache_type: str, prop: str
     ) -> Union[ObjectSummary, MoveFunctionCacheEntry, Any, None]:
         """Fetch a single entry from the in-memory dict store."""
         res = self._cache.get(cache_type)
-        return res.get(entry_type) if res else None
+        return res.get(prop) if res else None
 
     @instrumented("pysui.sui.sui_common.executors.cache.AsyncInMemoryCache._set")
     async def _set(
-        self, cache_type: str, entry_type: str, val: Any
+        self, cache_type: str, prop: str, val: Any
     ) -> Union[ObjectSummary, MoveFunctionCacheEntry, Any, None]:
         """Persist a single entry into the in-memory dict store."""
-        self._cache[cache_type][entry_type] = val
+        self._cache[cache_type][prop] = val
         return val
 
     @instrumented("pysui.sui.sui_common.executors.cache.AsyncInMemoryCache._delete")
@@ -253,7 +268,9 @@ class AsyncObjectCache(AsyncInMemoryCache):
         """Clear entries for one cache type or all types when None."""
         await self._clear(cache_type)
 
-    @instrumented("pysui.sui.sui_common.executors.cache.AsyncObjectCache.clear_owned_objects")
+    @instrumented(
+        "pysui.sui.sui_common.executors.cache.AsyncObjectCache.clear_owned_objects"
+    )
     async def clear_owned_objects(self):
         """Clear all cached owned-object entries."""
         await self.clear("OwnedObject")
@@ -300,8 +317,28 @@ class AsyncObjectCache(AsyncInMemoryCache):
                         objectId=changed.object_id,
                         version=lamport_version,
                         digest=changed.output_digest or "",
-                        owner=None if (owner is None or owner.kind in (sui_prot.OwnerOwnerKind.SHARED, sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS)) else owner.address,
-                        initialSharedVersion=str(owner.version) if owner and owner.kind in (sui_prot.OwnerOwnerKind.SHARED, sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS) else None,
+                        owner=(
+                            None
+                            if (
+                                owner is None
+                                or owner.kind
+                                in (
+                                    sui_prot.OwnerOwnerKind.SHARED,
+                                    sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS,
+                                )
+                            )
+                            else owner.address
+                        ),
+                        initialSharedVersion=(
+                            str(owner.version)
+                            if owner
+                            and owner.kind
+                            in (
+                                sui_prot.OwnerOwnerKind.SHARED,
+                                sui_prot.OwnerOwnerKind.CONSENSUS_ADDRESS,
+                            )
+                            else None
+                        ),
                     )
                 )
         if added or deleted:

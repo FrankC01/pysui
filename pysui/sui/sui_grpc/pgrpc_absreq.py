@@ -212,7 +212,9 @@ class MessageBuilder:
                     if inner_type == cls_name:
                         result_list.append(FieldFetch(tname, f"Self({cls_name})", []))
                     elif hit := list(
-                        filter(lambda e: e[0] == inner_type, PGRPC_Request._MODLIST)
+                        filter(
+                            lambda e: e[0] == inner_type, PGRPC_Request._MODLIST  # pylint: disable=cell-var-from-loop
+                        )
                     ):
                         if issubclass(hit[0][1], enum.Enum):
                             Visited.register_enum(inner_type, hit[0][1])  # type: ignore
@@ -223,7 +225,9 @@ class MessageBuilder:
                 result_list.append(FieldFetch(tname, ftypes, []))
             else:
                 if hit := list(
-                    filter(lambda e: e[0] == ftypes, PGRPC_Request._MODLIST)
+                    filter(
+                        lambda e: e[0] == ftypes, PGRPC_Request._MODLIST  # pylint: disable=cell-var-from-loop
+                    )
                 ):
                     if issubclass(hit[0][1], enum.Enum):
                         Visited.register_enum(ftypes, hit[0][1])  # type: ignore

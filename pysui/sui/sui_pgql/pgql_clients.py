@@ -5,7 +5,6 @@
 
 """Sui GraphQL clients."""
 
-
 from abc import ABC, abstractmethod
 import logging
 import asyncio
@@ -39,7 +38,12 @@ from pysui.sui.sui_pgql.pgql_validators import TypeValidator
 import pysui.sui.sui_pgql.pgql_types as pgql_type
 from pysui.sui.sui_pgql.pgql_configs import SuiConfigGQL
 import pysui.sui.sui_pgql.pgql_schema as scm
-from pysui.sui.sui_common.instrumentation import instrumented, measure, sync_instrumented, sync_measure
+from pysui.sui.sui_common.instrumentation import (
+    instrumented,
+    measure,
+    sync_instrumented,
+    sync_measure,
+)
 
 # Standard library logging setup
 logger = logging.getLogger("pgql_client")
@@ -49,7 +53,9 @@ class PGQL_QueryNode(ABC):
     """Base query class."""
 
     @abstractmethod
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.PGQL_QueryNode.as_document_node")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_clients.PGQL_QueryNode.as_document_node"
+    )
     def as_document_node(self, schema: DSLSchema) -> GraphQLRequest:
         """Returns a gql GraphQLRequest ready to execute.
 
@@ -76,7 +82,7 @@ class PGQL_NoOp(PGQL_QueryNode):
     """Noop query class."""
 
     @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.PGQL_NoOp.as_document_node")
-    def as_document_node(self) -> GraphQLRequest:
+    def as_document_node(self, schema: Optional[DSLSchema] = None) -> GraphQLRequest:
         """Returns a gql GraphQLRequest ready to execute.
 
         This must be implemented in subclasses.
@@ -121,7 +127,9 @@ class BaseSuiGQLClient(PysuiClient):
         version="0.65.0", reason="BREAKING Uses PysuiConfiguration instead of SuiConfig"
     )
     @property
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.current_gas_price")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.current_gas_price"
+    )
     def current_gas_price(self) -> int:
         """Fetch the current epoch gas price."""
         return self._schema.rpc_config.checkpoint.reference_gas_price
@@ -160,18 +168,24 @@ class BaseSuiGQLClient(PysuiClient):
         # return self.rpc_config(for_version).chainIdentifier
 
     @property
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.chain_environment")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.chain_environment"
+    )
     def chain_environment(self) -> str:
         """Fetch which environment (testnet, devenet, etc.) operating with."""
         return self.rpc_config().gqlEnvironment
 
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.schema_version")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.schema_version"
+    )
     def schema_version(self, for_version: Optional[str] = None) -> str:
         """Returns Sui GraphQL schema long version."""
         return self._schema.build_version
 
     @property
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.base_schema_version")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.base_schema_version"
+    )
     def base_schema_version(self) -> str:
         """Returns the default schema version (schema version without patch)"""
         return self._schema.base_version
@@ -190,7 +204,9 @@ class BaseSuiGQLClient(PysuiClient):
             )
             setattr(qnode, "owner", resolved_owner)
 
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient._qnode_pre_run")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient._qnode_pre_run"
+    )
     def _qnode_pre_run(
         self, qnode: PGQL_QueryNode
     ) -> Union[GraphQLRequest, ValueError]:
@@ -205,13 +221,16 @@ class BaseSuiGQLClient(PysuiClient):
         raise ValueError("Not a valid PGQL_QueryNode")
 
     @versionadded(version="0.60.0", reason="Support query inspection")
-    @sync_instrumented("pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.query_node_to_string")
+    @sync_instrumented(
+        "pysui.sui.sui_pgql.pgql_clients.BaseSuiGQLClient.query_node_to_string"
+    )
     def query_node_to_string(self, *, query_node: PGQL_QueryNode) -> str:
         """."""
         self._qnode_owner(query_node)
         qres = query_node.as_document_node(self.schema())
         qres_prnt: str = print_ast(qres.document)
         return qres_prnt
+
 
 class GqlProtocolClient(BaseSuiGQLClient, AsyncClientBase):
     """Asynchronous pysui GraphQL client."""
@@ -359,7 +378,11 @@ class GqlProtocolClient(BaseSuiGQLClient, AsyncClientBase):
         try:
             async with self._slock:
                 _session = await self.async_client()
-                extra_args = dict(with_headers) if with_headers is not None else dict(self._default_header or {})
+                extra_args = (
+                    dict(with_headers)
+                    if with_headers is not None
+                    else dict(self._default_header or {})
+                )
                 extra_args["timeout"] = timeout or self._schema.timeout
                 sres = await _session.execute(node, extra_args=extra_args)
             if encode_fn:
@@ -370,11 +393,22 @@ class GqlProtocolClient(BaseSuiGQLClient, AsyncClientBase):
             return SuiRpcResult(True, None, result_data)
 
         except texc.TransportQueryError as gte:
-            if capture_errors and isinstance(gte.data, dict) and gte.errors and encode_fn is not None:
+            if (
+                capture_errors
+                and isinstance(gte.data, dict)
+                and gte.errors
+                and encode_fn is not None
+            ):
                 try:
                     payload = dict(gte.data)
                     payload["errors"] = [
-                        {"message": e.get("message", str(e)) if isinstance(e, dict) else str(e)}
+                        {
+                            "message": (
+                                e.get("message", str(e))
+                                if isinstance(e, dict)
+                                else str(e)
+                            )
+                        }
                         for e in (gte.errors or [])
                     ]
                     async with measure(f"gql.{encode_fn.__qualname__}"):
@@ -483,7 +517,9 @@ class GqlProtocolClient(BaseSuiGQLClient, AsyncClientBase):
             "No removal timeline set."
         ),
     )
-    @instrumented("pysui.sui.sui_pgql.pgql_clients.GqlProtocolClient.execute_query_node")
+    @instrumented(
+        "pysui.sui.sui_pgql.pgql_clients.GqlProtocolClient.execute_query_node"
+    )
     async def execute_query_node(
         self,
         *,
@@ -545,7 +581,9 @@ class GqlProtocolClient(BaseSuiGQLClient, AsyncClientBase):
             return SuiRpcResult(False, str(exc), None)
 
         return await self._execute_gql_node(
-            node, with_headers=headers, timeout=timeout,
+            node,
+            with_headers=headers,
+            timeout=timeout,
             capture_errors=command.capture_errors,
         )
 
@@ -563,7 +601,9 @@ class GqlProtocolClient(BaseSuiGQLClient, AsyncClientBase):
             if isinstance(qdoc_node, PGQL_NoOp):
                 return SuiRpcResult(True, None, pgql_type.NoopGQL.from_query())
             encode_fn = node.encode_fn()
-            return await self._execute(qdoc_node, with_headers, encode_fn, timeout, capture_errors)
+            return await self._execute(
+                qdoc_node, with_headers, encode_fn, timeout, capture_errors
+            )
         except (ValueError, GraphQLError) as ve:
             return SuiRpcResult(
                 False, "ValueError", pgql_type.ErrorGQL.from_query(ve.args)

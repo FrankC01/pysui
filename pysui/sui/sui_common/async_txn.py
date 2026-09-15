@@ -144,7 +144,7 @@ class AsyncSuiTransaction(txbase):
     _SIG_ARRAY: str = "sig_array"
 
     @sync_instrumented("pysui.sui.sui_common.async_txn.AsyncSuiTransaction.__init__")
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:  # pylint: disable=super-init-not-called
         """Initialize the asynchronous SuiTransaction.
 
         :param client: The async protocol client (GqlProtocolClient or GrpcProtocolClient)
@@ -169,7 +169,7 @@ class AsyncSuiTransaction(txbase):
         # Call grandparent directly to bypass _SuiTransactionBase's sync fallbacks
         # (client.protocol() and client.current_gas_price are sync on some clients).
         # gas_price and txn_constraints are resolved lazily during build.
-        _TransactionBase.__init__(
+        _TransactionBase.__init__(  # pylint: disable=non-parent-init-called
             self,
             client=client,
             compress_inputs=kwargs.pop("compress_inputs", True),

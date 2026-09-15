@@ -31,6 +31,8 @@ from pysui.sui.sui_common.instrumentation import (
     sync_measure,
 )
 
+# pylint: disable=arguments-differ
+
 
 class GetServiceInfo(absreq.PGRPC_Request):
     """Query the service for general information about its current state."""
@@ -197,9 +199,7 @@ class GetCurrentValidatorsSC(GetCurrentValidators):
     @sync_instrumented(
         "pysui.sui.sui_grpc.pgrpc_requests.GetCurrentValidatorsSC.render"
     )
-    def render(
-        self, gepoch: sui_prot.GetEpochResponse
-    ) -> Optional["ValidatorsResult"]:
+    def render(self, gepoch: sui_prot.GetEpochResponse) -> Optional["ValidatorsResult"]:
         """Extract active validators from epoch system state."""
         if (
             gepoch.epoch is None
@@ -631,9 +631,7 @@ class GetMultiplePastObjects(absreq.PGRPC_Request):
         self.objects = []
         for entry in for_versions:
             self.objects.append(
-                sui_prot.GetObjectRequest(
-                    str(entry["objectId"]), int(entry["version"])
-                )
+                sui_prot.GetObjectRequest(str(entry["objectId"]), int(entry["version"]))
             )
         self.field_mask = self._field_mask(
             field_mask if field_mask else OBJECT_DEFAULT_FIELDS
@@ -778,7 +776,8 @@ class GetPartyObjectsSC(GetObjectsOwnedByAddressSC):
         resp.objects = [
             o
             for o in resp.objects
-            if o.owner and o.owner.kind is not None
+            if o.owner
+            and o.owner.kind is not None
             and o.owner.kind.name == "CONSENSUS_ADDRESS"
         ]
         return resp
